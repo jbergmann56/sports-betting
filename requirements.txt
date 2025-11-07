@@ -24,3 +24,4 @@ pytz==2024.1
 # Optional: For advanced features
 # selenium==4.16.0  # Uncomment if building web scrapers
 # undetected-chromedriver==3.5.5  # Uncomment for Bovada scraping
+python-dotenv==1.0.0

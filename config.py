@@ -7,15 +7,42 @@ import os
 from dataclasses import dataclass
 from typing import Dict, List
 
+# Load environment variables from .env (local) or Streamlit secrets (cloud)
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Try to load from .env file (for local development)
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+
+# Helper function to get config values from either .env or Streamlit secrets
+def get_secret(key: str, default=None):
+    """Get secret from environment variable or Streamlit secrets"""
+    # First try environment variables (from .env)
+    value = os.getenv(key)
+    if value:
+        return value
+
+    # Then try Streamlit secrets (for cloud deployment)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except (ImportError, FileNotFoundError, KeyError):
+        pass
+
+    return default
+
 # ============================================
 # DATABASE CONFIGURATION
 # ============================================
 DB_CONFIG = {
-    'host': os.getenv('AZURE_MYSQL_HOST'),
-    'user': os.getenv('AZURE_MYSQL_USER'),
-    'password': os.getenv('AZURE_MYSQL_PASSWORD'),
-    'database': os.getenv('AZURE_MYSQL_DATABASE'),
-    'port': int(os.getenv('AZURE_MYSQL_PORT', 3306)),
+    'host': get_secret('AZURE_MYSQL_HOST'),
+    'user': get_secret('AZURE_MYSQL_USER'),
+    'password': get_secret('AZURE_MYSQL_PASSWORD'),
+    'database': get_secret('AZURE_MYSQL_DATABASE'),
+    'port': int(get_secret('AZURE_MYSQL_PORT', '3306')),
 }
 
 # ============================================
