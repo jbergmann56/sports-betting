@@ -1,0 +1,26 @@
+# Core dependencies
+streamlit==1.31.0
+pandas==2.2.0
+numpy==1.26.3
+
+# Database
+mysql-connector-python==8.3.0
+
+# Data visualization
+plotly==5.18.0
+
+# Excel file handling
+openpyxl==3.1.2
+xlrd==2.0.1
+
+# Web scraping (for future API integrations)
+requests==2.31.0
+beautifulsoup4==4.12.3
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
+
+# Optional: For advanced features
+# selenium==4.16.0  # Uncomment if building web scrapers
+# undetected-chromedriver==3.5.5  # Uncomment for Bovada scraping
