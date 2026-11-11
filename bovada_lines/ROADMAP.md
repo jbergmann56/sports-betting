@@ -18,13 +18,19 @@ per-market parsing with explicit states, event-page recovery, append-only raw
 captures with checksums, `Date − Age` snapshot times, `fetch --replay`, golden
 tests against archived NFL/NBA payloads and fault-injection tests.
 
+Also done: package cleanup into importable modules (`config`, `odds`,
+`timeutil`, `history`, `db`, thin `cli`), and the persistent rolling SQLite
+history — hashed numbered migrations, one-time verified import of the frozen
+archive, `ingest` of capture JSON (raw bodies stay as files, verified by
+sha256), append-only triggers, line-movement / latest-price / fetch-health
+views, and point-in-time exports.
+
 Remaining:
-- Append fetch runs into the rolling SQLite history (new `fetch_runs` /
-  `fetch_attempts` tables via append-only migration) — next, together with
-  code cleanup.
 - Cross-check each board against an independent schedule (ESPN) so games the
   book never listed are labelled `NOT_LISTED_BY_BOOK` rather than invisible.
 - Optional re-sweep to tighten cross-sport skew under the 120 s cohort rule.
+- A versioned normalization view mapping legacy `side`/`game_key`/status
+  conventions onto the current vocabulary (legacy rows stay as recorded).
 - `legacy_ops/fetch_nov11_*.py` are kept as archived evidence; do not use them.
 
 ## Phase 2 — one model adapter at a time

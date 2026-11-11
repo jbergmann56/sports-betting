@@ -1,113 +1,56 @@
-"""CLI for auditing saved Gambling project evidence and capturing Bovada odds.
+"""Command line: frozen-evidence audit, Bovada odds capture, rolling SQLite history.
 
-`fetch` reads Bovada's public odds feed (read-only). No sportsbook
-authentication, stake submission, or unverified model approximation takes
-place in this package.
+`fetch` only reads Bovada's public odds feed and writes capture files.
+`ingest` loads those capture JSON files into the rolling database. Nothing here
+authenticates to a sportsbook, submits stakes, or approximates a model.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import json
-import sqlite3
 import sys
-import zipfile
-from collections import Counter
-from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
+from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data"
-ARCHIVE = DATA / "GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip"
-DATABASE = DATA / "history.sqlite"
-CAPTURES = DATA / "captures"
-LOCAL = ZoneInfo("America/Chicago")
+from .config import Paths, default_paths
+from .history import frozen
+
+EXIT_OK, EXIT_CHECK_FAILED, EXIT_FETCH_INCOMPLETE = 0, 1, 2
 
 
-def initialize(force: bool = False) -> Path:
-    if DATABASE.exists() and not force:
-        return DATABASE
-    if not ARCHIVE.exists():
-        raise FileNotFoundError(f"Missing frozen history archive: {ARCHIVE}")
-    DATA.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(ARCHIVE) as source:
-        payload = source.read("GAMBLING_ROLLING_SCORING_HISTORY.sqlite")
-    DATABASE.write_bytes(payload)
-    return DATABASE
+def _emit(result: Any) -> None:
+    print(json.dumps(result, indent=2, default=str))
 
 
-def connect() -> sqlite3.Connection:
-    if not DATABASE.exists():
-        initialize()
-    con = sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
-    return con
+# -- frozen evidence ---------------------------------------------------------
+
+def cmd_init(args, paths: Paths) -> int:
+    print(f"Initialized local history: {frozen.extract_frozen(paths, force=args.force)}")
+    return EXIT_OK
 
 
-def latest_batch(con: sqlite3.Connection) -> str:
-    row = con.execute("SELECT batch_id FROM capture_batches ORDER BY min_quote_utc DESC LIMIT 1").fetchone()
-    if row is None:
-        raise RuntimeError("No frozen capture batches available")
-    return str(row["batch_id"])
+def cmd_audit(args, paths: Paths) -> int:
+    with frozen.connect_frozen(paths) as con:
+        result = frozen.audit(con)
+    _emit(result)
+    return EXIT_CHECK_FAILED if result["integrity"] != "ok" or result["foreign_key_errors"] else EXIT_OK
 
 
-def audit() -> dict:
-    with connect() as con:
-        tables = ["capture_batches", "quote_cohorts", "events", "market_quotes", "model_scores", "settlements"]
-        counts = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
-        integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
-        foreign_keys = con.execute("PRAGMA foreign_key_check").fetchall()
-        result = {"integrity": integrity, "foreign_key_errors": len(foreign_keys),
-                  "counts": counts, "latest_batch": latest_batch(con)}
-    return result
+def cmd_scores(args, paths: Paths) -> int:
+    with frozen.connect_frozen(paths) as con:
+        _emit(frozen.frozen_scores(con, args.date, args.batch))
+    return EXIT_OK
 
 
-def chicago_date(iso_time: str | None) -> str | None:
-    if not iso_time:
-        return None
-    return datetime.fromisoformat(str(iso_time).replace("Z", "+00:00")).astimezone(LOCAL).date().isoformat()
+def cmd_parlays(args, paths: Paths) -> int:
+    _emit(frozen.research_parlays(paths, args.date, args.limit))
+    return EXIT_OK
 
 
-def price_label(value: float | None) -> str:
-    if value is None:
-        return "?"
-    return f"{value:+g}" if value > 0 else f"{value:g}"
+# -- capture -----------------------------------------------------------------
 
-
-def replay(date: str, batch: str | None = None) -> dict:
-    with connect() as con:
-        selected = batch or latest_batch(con)
-        games = con.execute("SELECT sport, event_id, game, start_utc FROM events WHERE batch_id=?", (selected,)).fetchall()
-        game_ids = {(r["sport"], r["event_id"]) for r in games if chicago_date(r["start_utc"]) == date}
-        scores = con.execute("""
-            SELECT sport,event_id,market,selection_side,quoted_line,quoted_odds,
-                   model_role,model_version,tier,model_probability,expected_value,
-                   full_kelly,adjusted_kelly,action_status
-            FROM model_scores WHERE batch_id=?
-            ORDER BY sport,event_id,model_role,market
-        """, (selected,)).fetchall()
-        flagged = [dict(r) for r in scores if (r["sport"],r["event_id"]) in game_ids]
-        statuses = Counter(r["action_status"] for r in flagged)
-    return {"date": date, "batch": selected, "games": len(game_ids),
-            "status_counts": dict(statuses),
-            "qualified_and_research": [r for r in flagged if r["action_status"] in
-                                       ("PRODUCTION_QUALIFIED","RESEARCH_POSITIVE_EV")]}
-
-
-def research_parlays(date: str, limit: int = 8) -> dict:
-    # These are historical frozen shadow observations, not live bet tickets.
-    path = DATA / f"{date.replace('-', '')}_theoretical_parlays.csv"
-    if not path.exists():
-        return {"date": date, "status": "NO_FROZEN_PARLAY_COHORT", "rows": []}
-    with path.open(newline="", encoding="utf-8") as stream:
-        rows = list(csv.DictReader(stream))
-    return {"date": date, "status": "RESEARCH_ONLY_UNVERIFIED_BOOK_PRICE",
-            "total": len(rows), "rows": rows[:limit]}
-
-
-def fetch(args: argparse.Namespace) -> tuple[dict, int]:
+def cmd_fetch(args, paths: Paths) -> int:
     from .bovada import FetchConfig, fetch_board, replay_run
     from .bovada.endpoints import LEAGUES
 
@@ -117,49 +60,147 @@ def fetch(args: argparse.Namespace) -> tuple[dict, int]:
         sports = [s.strip().upper() for s in args.sports.split(",")] if args.sports else list(LEAGUES)
         config = FetchConfig(max_age_seconds=args.max_age, all_variants=not args.first_ok,
                              recover_events=not args.no_recover)
-        run = fetch_board(sports, Path(args.out), config=config)
+        run = fetch_board(sports, Path(args.out) if args.out else paths.captures, config=config)
     manifest = run.manifest()
     manifest["run_dir"] = str(run.run_dir) if run.run_dir else None
-    return manifest, 0 if run.ok else 2
+    _emit(manifest)
+    return EXIT_OK if run.ok else EXIT_FETCH_INCOMPLETE
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Five-sport Gambling history audit and Bovada odds capture")
+# -- rolling database --------------------------------------------------------
+
+def cmd_db(args, paths: Paths) -> int:
+    from . import db
+    from .db.export import export_snapshot
+    from .db.queries import status
+
+    if args.db_command == "init":
+        _emit(db.init_database(paths))
+        return EXIT_OK
+    con = db.open_database(paths)
+    try:
+        if args.db_command == "status":
+            result = status(con)
+            _emit(result)
+            return EXIT_CHECK_FAILED if result["integrity"] != "ok" or result["foreign_key_errors"] else EXIT_OK
+        _emit({"archive": str(export_snapshot(con, paths.archives))})
+        return EXIT_OK
+    finally:
+        con.close()
+
+
+def cmd_ingest(args, paths: Paths) -> int:
+    from . import db
+
+    con = db.open_database(paths)
+    try:
+        run_dirs = [Path(p) for p in args.run_dirs]
+        if args.all:
+            run_dirs += db.pending_captures(con, paths.captures)
+        if not run_dirs:
+            _emit({"ingested": [], "note": "nothing to ingest"})
+            return EXIT_OK
+        results, failed = [], False
+        for run_dir in run_dirs:
+            try:
+                results.append(db.ingest_capture(con, run_dir))
+            except (db.IngestError, OSError, ValueError) as exc:
+                failed = True
+                results.append({"run_dir": str(run_dir), "status": "ERROR", "error": str(exc)})
+        _emit({"ingested": results})
+        return EXIT_CHECK_FAILED if failed else EXIT_OK
+    finally:
+        con.close()
+
+
+def cmd_history(args, paths: Paths) -> int:
+    from . import db
+    from .db import queries
+    from .timeutil import utcnow
+
+    con = db.open_database(paths)
+    try:
+        if args.history_command == "latest":
+            after = None if args.include_started else utcnow().isoformat()
+            _emit(queries.latest_quotes(con, args.sport, upcoming_after=after,
+                                        offered_only=not args.all_statuses, limit=args.limit))
+        elif args.history_command == "lines":
+            _emit(queries.line_history(con, args.game_key))
+        elif args.history_command == "find":
+            _emit(queries.find_games(con, args.text))
+        else:
+            _emit(queries.capture_health(con, args.since))
+        return EXIT_OK
+    finally:
+        con.close()
+
+
+# -- parser ------------------------------------------------------------------
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="python -m gambling",
+                                     description="Five-sport Gambling history, Bovada capture and rolling SQLite ledger")
     commands = parser.add_subparsers(dest="command", required=True)
-    init = commands.add_parser("init", help="Extract the read-only history snapshot from the bundled ZIP")
-    init.add_argument("--force", action="store_true", help="Re-extract the provided history snapshot")
-    commands.add_parser("audit", help="Count records and verify database integrity")
-    score = commands.add_parser("replay", help="Show frozen production/research score rows for a historical date")
-    score.add_argument("--date", default="2026-11-11")
-    score.add_argument("--batch", help="Explicit original capture batch ID")
-    parlay = commands.add_parser("parlays", help="Inspect captured research-only theoretical parlay slate")
+
+    init = commands.add_parser("init", help="Extract the read-only frozen snapshot from the bundled ZIP")
+    init.add_argument("--force", action="store_true", help="Re-extract the frozen snapshot")
+    init.set_defaults(handler=cmd_init)
+
+    commands.add_parser("audit", help="Count frozen records and verify integrity").set_defaults(handler=cmd_audit)
+
+    for name in ("scores", "replay"):  # `replay` kept as the original name
+        score = commands.add_parser(name, help="Show frozen production/research score rows for a historical date")
+        score.add_argument("--date", default="2026-11-11")
+        score.add_argument("--batch", help="Explicit original capture batch ID")
+        score.set_defaults(handler=cmd_scores)
+
+    parlay = commands.add_parser("parlays", help="Inspect archived research-only theoretical parlays")
     parlay.add_argument("--date", default="2026-11-11")
     parlay.add_argument("--limit", type=int, default=8)
-    grab = commands.add_parser("fetch", help="Capture Bovada main-market odds (read-only, every attempt recorded)")
+    parlay.set_defaults(handler=cmd_parlays)
+
+    grab = commands.add_parser("fetch", help="Capture Bovada main-market odds to files (read-only)")
     grab.add_argument("--sports", help="Comma list of NFL,NCAAFB,NBA,NCAABB,NHL (default: all)")
-    grab.add_argument("--out", default=str(CAPTURES), help="Capture root directory")
+    grab.add_argument("--out", help="Capture root directory (default: <data>/captures)")
     grab.add_argument("--max-age", type=int, default=900, help="Reject CDN responses older than N seconds")
     grab.add_argument("--first-ok", action="store_true", help="Stop at the first usable URL variant per sport")
     grab.add_argument("--no-recover", action="store_true", help="Skip event-page recovery of incomplete games")
     grab.add_argument("--replay", metavar="RUN_DIR", help="Rebuild a captured run offline instead of fetching")
-    args = parser.parse_args()
-    if args.command == "init":
-        print(f"Initialized local history: {initialize(force=args.force)}")
-        return
-    if args.command == "fetch":
-        result, code = fetch(args)
-        print(json.dumps(result, indent=2, default=str))
-        sys.exit(code)
-    if args.command == "audit":
-        result = audit()
-    elif args.command == "replay":
-        result = replay(args.date, args.batch)
-    else:
-        result = research_parlays(args.date, args.limit)
-    print(json.dumps(result, indent=2, default=str))
-    if args.command == "audit" and (result["integrity"] != "ok" or result["foreign_key_errors"]):
-        sys.exit(1)
+    grab.set_defaults(handler=cmd_fetch)
+
+    database = commands.add_parser("db", help="Rolling SQLite database")
+    db_commands = database.add_subparsers(dest="db_command", required=True)
+    db_commands.add_parser("init", help="Create/upgrade the database and import the frozen archive once")
+    db_commands.add_parser("status", help="Migrations, imports, counts and integrity")
+    db_commands.add_parser("export", help="Write a new point-in-time archive ZIP")
+    database.set_defaults(handler=cmd_db)
+
+    ingest = commands.add_parser("ingest", help="Load capture JSON files into the rolling database")
+    ingest.add_argument("run_dirs", nargs="*", help="Capture run directories")
+    ingest.add_argument("--all", action="store_true", help="Also ingest every not-yet-ingested capture")
+    ingest.set_defaults(handler=cmd_ingest)
+
+    history = commands.add_parser("history", help="Query the rolling history")
+    h_commands = history.add_subparsers(dest="history_command", required=True)
+    latest = h_commands.add_parser("latest", help="Newest observed price per upcoming game/market/side")
+    latest.add_argument("--sport")
+    latest.add_argument("--limit", type=int, default=500)
+    latest.add_argument("--include-started", action="store_true", help="Include games already started")
+    latest.add_argument("--all-statuses", action="store_true", help="Include suspended/not offered sides")
+    lines = h_commands.add_parser("lines", help="Line movement for one game")
+    lines.add_argument("game_key", help="e.g. NBA:BOVADA:33233970 (see `history find`)")
+    find = h_commands.add_parser("find", help="Find game keys by team or matchup text")
+    find.add_argument("text")
+    health = h_commands.add_parser("health", help="Bovada fetch reliability by day and sport")
+    health.add_argument("--since", help="UTC date YYYY-MM-DD")
+    history.set_defaults(handler=cmd_history)
+    return parser
+
+
+def main(argv: list[str] | None = None, paths: Paths | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    return args.handler(args, paths or default_paths())
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

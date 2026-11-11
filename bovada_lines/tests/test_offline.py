@@ -1,6 +1,24 @@
 import unittest
 
-from gambling.cli import audit, chicago_date, replay, research_parlays
+from gambling.config import default_paths
+from gambling.history import audit as audit_db, connect_frozen, frozen_scores, research_parlays as parlays
+from gambling.timeutil import chicago_date
+
+PATHS = default_paths()
+
+
+def audit():
+    with connect_frozen(PATHS) as con:
+        return audit_db(con)
+
+
+def replay(date, batch=None):
+    with connect_frozen(PATHS) as con:
+        return frozen_scores(con, date, batch)
+
+
+def research_parlays(date, limit=8):
+    return parlays(PATHS, date, limit)
 
 
 class FrozenNov11Regression(unittest.TestCase):

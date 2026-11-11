@@ -21,7 +21,8 @@ from gambling.bovada.capture import CaptureStore, load_attempts
 from gambling.bovada.endpoints import event_variants, league_variants
 from gambling.bovada.parse import NOT_OFFERED, NOT_PREGAME, OFFERED, SUSPENDED, parse_american
 from gambling.bovada.transport import HttpResponse
-from gambling.cli import connect
+from gambling.config import default_paths
+from gambling.history import connect_frozen
 
 FIXTURES = Path(__file__).parent / "fixtures" / "bovada"
 SERVER_DATE = datetime(2026, 11, 11, 18, 55, 0, tzinfo=timezone.utc)  # before any fixture tip-off
@@ -133,7 +134,7 @@ class GoldenParser(unittest.TestCase):
 
     def test_nba_matches_rolling_history_database(self):
         events = {e.event_id: e for e in parse_feed(fixture_json("nba_20261110_181127z_api_response.json.gz"), "NBA")}
-        with connect() as con:
+        with connect_frozen(default_paths()) as con:
             rows = con.execute("SELECT event_id, market, side, line, odds_american FROM market_quotes "
                                "WHERE batch_id='NBA_20261110_181127Z_R4_R3'").fetchall()
         self.assertEqual(len(rows), 36)

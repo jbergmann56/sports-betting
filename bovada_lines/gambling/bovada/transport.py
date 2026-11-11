@@ -18,6 +18,8 @@ from email.utils import parsedate_to_datetime
 from enum import Enum
 from typing import Any, Callable, Protocol
 
+from ..timeutil import utcnow
+
 DEFAULT_HEADERS = {
     # A plain browser-like client identity; no account or personal details.
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -26,10 +28,6 @@ DEFAULT_HEADERS = {
     "Accept-Encoding": "gzip, deflate",
     "Accept-Language": "en-US,en;q=0.9",
 }
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 @dataclass

@@ -26,8 +26,9 @@ from typing import Any, Callable, Iterable, Protocol
 from .capture import CaptureStore, load_attempts, new_run_id
 from .endpoints import LEAGUES, Endpoint, event_variants, league_variants
 from .parse import Event, parse_feed
+from ..timeutil import utcnow
 from .transport import (Classified, HttpResponse, Outcome, RetryPolicy, Transport,
-                        UrllibTransport, classify, utcnow)
+                        UrllibTransport, classify)
 
 # Sport-level verdicts
 SPORT_OK = "OK"                    # at least one fresh, valid board
