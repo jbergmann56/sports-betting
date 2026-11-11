@@ -1,0 +1,606 @@
+{
+  "authority": {
+    "model_version": "NBA_MODEL_AUTHORITY_V2_V27",
+    "effective_date": "2026-10-07",
+    "data_authority": "NBA_DB_MASTER_RECONSTRUCTED_V27_AUTHORITATIVE.csv",
+    "data_sha256": "f55989eca558908e6eb7d9075921a17a2fdc9853e0298a14c4b3c36353270485",
+    "supersedes_model_for_scoring": [
+      "NBA_MODEL_AUTHORITATIVE_V1.xlsx",
+      "NBA_MODEL_RESEARCH_V16_SRS_ELO_CHALLENGERS.xlsx"
+    ],
+    "development_games": 7588,
+    "chronological_oos_games": 6276,
+    "holdout_games": 1321,
+    "tier_a": "NONE"
+  },
+  "feature_engineering": {
+    "sort_order": [
+      "Date",
+      "Physical_Game_ID"
+    ],
+    "elo_K": 15.0,
+    "elo_home_advantage_points": 25.0,
+    "elo_offseason_carry": 0.65,
+    "elo_initial_rating": 1500.0,
+    "ewma_margin_alpha": 0.1,
+    "rest_definition": "max(days_since_previous_game - 1, 0), capped at 7; first game default 3",
+    "b2b_definition": "previous game exactly 1 calendar day earlier",
+    "3in4_definition": "at least 2 prior team games within previous 3 calendar days (current makes 3 in 4)",
+    "4in6_definition": "at least 3 prior team games within previous 5 calendar days (current makes 4 in 6)",
+    "rolling_5": "mean of prior 5 team games only; preseason falls back to prior-season final average",
+    "rolling_10": "mean of prior 10 team games only; preseason falls back to prior-season final average",
+    "league_avg_total": "mean total points of prior games in current season; opening default 220",
+    "no_future_data": true
+  },
+  "models": {
+    "moneyline_structural": {
+      "type": "StandardScaler + LogisticRegression",
+      "C": 10.0,
+      "intercept": 0.26547950987648156,
+      "features": [
+        {
+          "Feature": "elo_diff_home",
+          "Imputer_Median": 0.4921242827294918,
+          "Scaler_Mean": -1.0151984023575857,
+          "Scaler_Scale": 106.11106081242916,
+          "Coefficient_Standardized": 0.33025429325887884
+        },
+        {
+          "Feature": "prior_margin_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": -0.007136997064812423,
+          "Scaler_Scale": 5.764474861753698,
+          "Coefficient_Standardized": -0.025814856946645044
+        },
+        {
+          "Feature": "cum_margin_diff_home",
+          "Imputer_Median": -0.10538165538165539,
+          "Scaler_Mean": -0.10425522632136693,
+          "Scaler_Scale": 7.538442084493206,
+          "Coefficient_Standardized": 0.1723914926588492
+        },
+        {
+          "Feature": "ewma_margin_diff_home",
+          "Imputer_Median": -0.09811922677502816,
+          "Scaler_Mean": -0.16288639470353078,
+          "Scaler_Scale": 7.615447034830412,
+          "Coefficient_Standardized": 0.4909530020584991
+        },
+        {
+          "Feature": "margin5_diff_home",
+          "Imputer_Median": -0.20000000000000018,
+          "Scaler_Mean": -0.25276471130091055,
+          "Scaler_Scale": 11.352598315596415,
+          "Coefficient_Standardized": -0.07134255495803868
+        },
+        {
+          "Feature": "margin10_diff_home",
+          "Imputer_Median": -0.30000000000000004,
+          "Scaler_Mean": -0.266458377574308,
+          "Scaler_Scale": 9.404471786080094,
+          "Coefficient_Standardized": -0.17299105528675515
+        },
+        {
+          "Feature": "rest_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.11228255139694254,
+          "Scaler_Scale": 0.9994948161353935,
+          "Coefficient_Standardized": 0.04361689971366609
+        },
+        {
+          "Feature": "b2b_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.04454401686874011,
+          "Scaler_Scale": 0.48527936542405553,
+          "Coefficient_Standardized": 0.1002777350292771
+        },
+        {
+          "Feature": "three4_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.023721665788086453,
+          "Scaler_Scale": 0.5600156848091202,
+          "Coefficient_Standardized": 0.034229353055706825
+        },
+        {
+          "Feature": "four6_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.016341591987348445,
+          "Scaler_Scale": 0.5880524626366844,
+          "Coefficient_Standardized": 0.001002497565585716
+        },
+        {
+          "Feature": "season_stage",
+          "Imputer_Median": 41.5,
+          "Scaler_Mean": 42.117158671586715,
+          "Scaler_Scale": 25.118936496904045,
+          "Coefficient_Standardized": -0.026876965503254906
+        }
+      ],
+      "oos": {
+        "n": 6276,
+        "ml_brier": 0.22173183310043834,
+        "ml_logloss": 0.6340357292848638,
+        "spread_mae": 10.81157349238563,
+        "spread_rmse": 13.762190536019085,
+        "total_mae": 15.0407253093461,
+        "total_rmse": 19.080521989726698
+      },
+      "holdout": {
+        "n": 1321,
+        "ml_brier": 0.21003888350761168,
+        "ml_logloss": 0.6064267905512972,
+        "ml_acc": 0.660105980317941,
+        "spread_mae": 11.067416085121861,
+        "spread_rmse": 14.175986098967398,
+        "total_mae": 15.081853409991442,
+        "total_rmse": 18.816704915172792
+      },
+      "calibration_oos": {
+        "intercept": -0.03793998241851514,
+        "slope": 0.9357207333688367
+      },
+      "calibration_holdout": {
+        "intercept": -0.05571815506040508,
+        "slope": 1.0330578085678475
+      },
+      "champion_note": "Structural champion; market no-vig remains broad ML probability champion when market exists."
+    },
+    "spread_structural": {
+      "type": "StandardScaler + Ridge",
+      "alpha": 10.0,
+      "intercept": 2.1277016341591986,
+      "features": [
+        {
+          "Feature": "elo_diff_home",
+          "Imputer_Median": 0.4921242827294918,
+          "Scaler_Mean": -1.0151984023575857,
+          "Scaler_Scale": 106.11106081242916,
+          "Coefficient_Standardized": 1.8996236075154134
+        },
+        {
+          "Feature": "prior_margin_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": -0.007136997064812423,
+          "Scaler_Scale": 5.764474861753698,
+          "Coefficient_Standardized": -0.2038844449814143
+        },
+        {
+          "Feature": "cum_margin_diff_home",
+          "Imputer_Median": -0.10538165538165539,
+          "Scaler_Mean": -0.10425522632136693,
+          "Scaler_Scale": 7.538442084493206,
+          "Coefficient_Standardized": 1.3943581464501416
+        },
+        {
+          "Feature": "ewma_margin_diff_home",
+          "Imputer_Median": -0.09811922677502816,
+          "Scaler_Mean": -0.16288639470353078,
+          "Scaler_Scale": 7.615447034830412,
+          "Coefficient_Standardized": 4.19272403392418
+        },
+        {
+          "Feature": "margin5_diff_home",
+          "Imputer_Median": -0.20000000000000018,
+          "Scaler_Mean": -0.25276471130091055,
+          "Scaler_Scale": 11.352598315596415,
+          "Coefficient_Standardized": -0.8860931964074783
+        },
+        {
+          "Feature": "margin10_diff_home",
+          "Imputer_Median": -0.30000000000000004,
+          "Scaler_Mean": -0.266458377574308,
+          "Scaler_Scale": 9.404471786080094,
+          "Coefficient_Standardized": -1.0031900384173622
+        },
+        {
+          "Feature": "rest_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.11228255139694254,
+          "Scaler_Scale": 0.9994948161353935,
+          "Coefficient_Standardized": 0.10928921424426707
+        },
+        {
+          "Feature": "b2b_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.04454401686874011,
+          "Scaler_Scale": 0.48527936542405553,
+          "Coefficient_Standardized": 0.9130018554307737
+        },
+        {
+          "Feature": "three4_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.023721665788086453,
+          "Scaler_Scale": 0.5600156848091202,
+          "Coefficient_Standardized": 0.15799127381014638
+        },
+        {
+          "Feature": "four6_diff_home",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.016341591987348445,
+          "Scaler_Scale": 0.5880524626366844,
+          "Coefficient_Standardized": 0.2744248024559255
+        },
+        {
+          "Feature": "season_stage",
+          "Imputer_Median": 41.5,
+          "Scaler_Mean": 42.117158671586715,
+          "Scaler_Scale": 25.118936496904045,
+          "Coefficient_Standardized": 0.008053849490055701
+        }
+      ],
+      "oos": {
+        "n": 6276,
+        "mae": 10.81157349238563,
+        "rmse": 13.762190536019085
+      },
+      "holdout": {
+        "n": 1321,
+        "mae": 11.067416085121861,
+        "rmse": 14.175986098967398
+      }
+    },
+    "total_structural": {
+      "type": "StandardScaler + Ridge",
+      "alpha": 1000.0,
+      "intercept": 224.3111491829204,
+      "features": [
+        {
+          "Feature": "home_pf5",
+          "Imputer_Median": 112.4,
+          "Scaler_Mean": 112.20678611117626,
+          "Scaler_Scale": 6.972787140553237,
+          "Coefficient_Standardized": 0.6618980450197878
+        },
+        {
+          "Feature": "away_pf5",
+          "Imputer_Median": 112.4,
+          "Scaler_Mean": 112.42135296440696,
+          "Scaler_Scale": 7.02854956234961,
+          "Coefficient_Standardized": 0.7829970520667797
+        },
+        {
+          "Feature": "home_pa5",
+          "Imputer_Median": 112.0,
+          "Scaler_Mean": 112.10962327506601,
+          "Scaler_Scale": 7.116355380576972,
+          "Coefficient_Standardized": 1.0799937966622783
+        },
+        {
+          "Feature": "away_pa5",
+          "Imputer_Median": 112.0,
+          "Scaler_Mean": 112.07142541699581,
+          "Scaler_Scale": 7.15988840643906,
+          "Coefficient_Standardized": 1.404112914955194
+        },
+        {
+          "Feature": "home_pf10",
+          "Imputer_Median": 112.4,
+          "Scaler_Mean": 112.2242611239366,
+          "Scaler_Scale": 5.923714353376861,
+          "Coefficient_Standardized": 2.046425915107499
+        },
+        {
+          "Feature": "away_pf10",
+          "Imputer_Median": 112.6,
+          "Scaler_Mean": 112.4585963980658,
+          "Scaler_Scale": 6.029304619559807,
+          "Coefficient_Standardized": 1.8469978496436301
+        },
+        {
+          "Feature": "home_pa10",
+          "Imputer_Median": 112.0,
+          "Scaler_Mean": 112.07661177403264,
+          "Scaler_Scale": 6.0839004774983465,
+          "Coefficient_Standardized": 1.8051273560379568
+        },
+        {
+          "Feature": "away_pa10",
+          "Imputer_Median": 112.0,
+          "Scaler_Mean": 112.04409330949107,
+          "Scaler_Scale": 6.0642086254922845,
+          "Coefficient_Standardized": 1.6686162765864487
+        },
+        {
+          "Feature": "league_avg_total",
+          "Imputer_Median": 223.2454479027544,
+          "Scaler_Mean": 223.56829633915592,
+          "Scaler_Scale": 4.373142230013473,
+          "Coefficient_Standardized": -0.08084761275025586
+        },
+        {
+          "Feature": "home_rest",
+          "Imputer_Median": 1.0,
+          "Scaler_Mean": 1.246441750131787,
+          "Scaler_Scale": 1.0545952066934028,
+          "Coefficient_Standardized": -0.06734830068079402
+        },
+        {
+          "Feature": "away_rest",
+          "Imputer_Median": 1.0,
+          "Scaler_Mean": 1.1341591987348445,
+          "Scaler_Scale": 1.009406597164153,
+          "Coefficient_Standardized": 0.2531715338282675
+        },
+        {
+          "Feature": "home_b2b",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.13692672641012124,
+          "Scaler_Scale": 0.34376997833541106,
+          "Coefficient_Standardized": 0.02493618771633413
+        },
+        {
+          "Feature": "away_b2b",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.18147074327886137,
+          "Scaler_Scale": 0.3854077225649208,
+          "Coefficient_Standardized": 0.1408385678547704
+        },
+        {
+          "Feature": "home_3in4",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.2253558249868213,
+          "Scaler_Scale": 0.41781643951779884,
+          "Coefficient_Standardized": 0.2459502726098122
+        },
+        {
+          "Feature": "away_3in4",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.24907749077490776,
+          "Scaler_Scale": 0.4324787790911636,
+          "Coefficient_Standardized": -0.052376850389324346
+        },
+        {
+          "Feature": "home_4in6",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.2652872957301002,
+          "Scaler_Scale": 0.4414860659797889,
+          "Coefficient_Standardized": 0.02275544243205882
+        },
+        {
+          "Feature": "away_4in6",
+          "Imputer_Median": 0.0,
+          "Scaler_Mean": 0.2816288877174486,
+          "Scaler_Scale": 0.44979334957342504,
+          "Coefficient_Standardized": -0.14832506412223032
+        },
+        {
+          "Feature": "season_stage",
+          "Imputer_Median": 41.5,
+          "Scaler_Mean": 42.117158671586715,
+          "Scaler_Scale": 25.118936496904045,
+          "Coefficient_Standardized": -0.2856663417634179
+        }
+      ],
+      "oos": {
+        "n": 6276,
+        "mae": 15.0407253093461,
+        "rmse": 19.080521989726698
+      },
+      "holdout": {
+        "n": 1321,
+        "mae": 15.081853409991442,
+        "rmse": 18.816704915172792
+      }
+    }
+  },
+  "market_benchmarks": {
+    "development": {
+      "n": 2438,
+      "brier": 0.21465342340114335,
+      "logloss": 0.6185251284270539
+    },
+    "holdout": {
+      "n": 356,
+      "brier": 0.21105864388809825,
+      "logloss": 0.6101616379200053
+    }
+  },
+  "production_rules": {
+    "ML_BPLUS": {
+      "tier": "B+",
+      "health": "Strengthening",
+      "selection": "Choose side with positive structural minus no-vig market probability residual.",
+      "qualifier": "selected market p < 0.30 AND residual >= 0.03 AND residual < 0.06",
+      "model_p": "logistic(logit(selected market p) + 0.35929029695686326)",
+      "offset": 0.35929029695686326,
+      "offset_se": 0.1719758864924106,
+      "offset_ci": [
+        0.02222375322239012,
+        0.6963568406913364
+      ],
+      "evidence": {
+        "dev": {
+          "n": 141,
+          "win_rate": 0.2624113475177305,
+          "roi": 0.19042553191489361,
+          "mean_market_p": 0.21308859630956997,
+          "mean_model_p": 0.25858681944534007,
+          "avg_odds": 392.5886524822695
+        },
+        "holdout": {
+          "n": 32,
+          "win_rate": 0.34375,
+          "roi": 0.69765625,
+          "mean_market_p": 0.21145296515617118,
+          "mean_model_p": 0.2558806048606629,
+          "avg_odds": 394.609375
+        },
+        "combined": {
+          "n": 173,
+          "win_rate": 0.2774566473988439,
+          "roi": 0.28424855491329476,
+          "mean_market_p": 0.21278605181876792,
+          "mean_model_p": 0.2580862479614692,
+          "avg_odds": 392.96242774566474
+        },
+        "logit_offset": 0.35929029695686326,
+        "logit_offset_se": 0.1719758864924106,
+        "logit_offset_ci_low": 0.02222375322239012,
+        "logit_offset_ci_high": 0.6963568406913364,
+        "same_price_null_combined": {
+          "n": 1135,
+          "win_rate": 0.23700440528634362,
+          "roi": 0.05143171806167401,
+          "mean_p": 0.21884413709319522
+        }
+      }
+    },
+    "ML_LEAN": {
+      "tier": "Lean",
+      "health": "Watch",
+      "qualifier": "selected market p < 0.30 AND residual >= 0.06 AND residual < 0.08",
+      "normal_wager": false,
+      "evidence": {
+        "dev": {
+          "n": 99,
+          "win_rate": 0.24242424242424243,
+          "roi": 0.07929292929292928,
+          "mean_market_p": 0.21388340648230958,
+          "mean_model_p": 0.28429531106251016,
+          "avg_odds": 388.8888888888889
+        },
+        "holdout": {
+          "n": 11,
+          "win_rate": 0.2727272727272727,
+          "roi": 0.04318181818181819,
+          "mean_market_p": 0.24065769223910613,
+          "mean_model_p": 0.30969645297519,
+          "avg_odds": 313.8636363636364
+        },
+        "combined": {
+          "n": 110,
+          "win_rate": 0.24545454545454545,
+          "roi": 0.07568181818181817,
+          "mean_market_p": 0.21656083505798926,
+          "mean_model_p": 0.28683542525377814,
+          "avg_odds": 381.3863636363636
+        }
+      }
+    },
+    "SPREAD_B": {
+      "tier": "B",
+      "health": "Strengthening",
+      "selection": "Select side indicated by sign of predicted home margin - market-implied home margin.",
+      "qualifier": "selected side is underdog AND absolute margin edge >= 5.0 points",
+      "model_p": 0.5458860759493671,
+      "posterior": "Jeffreys Beta(wins+0.5, losses+0.5)",
+      "evidence": {
+        "dev": {
+          "n": 288,
+          "win_rate": 0.5381944444444444,
+          "roi": 0.027462121212121212,
+          "mean_edge": 7.354220572687
+        },
+        "holdout": {
+          "n": 27,
+          "win_rate": 0.6296296296296297,
+          "roi": 0.20202020202020204,
+          "mean_edge": 6.44764860038673
+        },
+        "combined_posterior": {
+          "n": 315,
+          "wins": 172,
+          "raw_rate": 0.546031746031746,
+          "posterior_mean": 0.5458860759493671,
+          "ci_low": 0.49083922272440605,
+          "ci_high": 0.6003826950039348,
+          "roi": 0.04242424242424243,
+          "p_gt_break_even": 0.7850284729398086
+        }
+      }
+    },
+    "OU_B": {
+      "tier": "B",
+      "health": "Strengthening",
+      "selection": "UNDER only",
+      "qualifier": "predicted total <= market total - 10.0 points",
+      "model_p": 0.5852272727272727,
+      "posterior": "Jeffreys Beta(wins+0.5, losses+0.5)",
+      "evidence": {
+        "dev": {
+          "n": 79,
+          "win_rate": 0.5822784810126582,
+          "roi": 0.1116225546605293,
+          "mean_edge": 12.63602233926273
+        },
+        "holdout": {
+          "n": 8,
+          "win_rate": 0.625,
+          "roi": 0.19318181818181815,
+          "mean_edge": 11.564224693798053
+        },
+        "combined_posterior": {
+          "n": 87,
+          "wins": 51,
+          "raw_rate": 0.5862068965517241,
+          "posterior_mean": 0.5852272727272727,
+          "ci_low": 0.48129703343505087,
+          "ci_high": 0.6854866021446386,
+          "roi": 0.11912225705329149,
+          "p_gt_break_even": 0.8782606752060397
+        }
+      }
+    },
+    "default": {
+      "ML": "Pass unless B+ or Lean qualifier; market no-vig is champion probability anchor.",
+      "Spread": "Pass outside Spread B qualifier.",
+      "OU": "Pass outside OU B qualifier."
+    }
+  },
+  "kelly": {
+    "full_kelly": "For decimal net odds b and calibrated p: max(0,(b*p-(1-p))/b). Use actual offered price.",
+    "adjusted_kelly": "Posterior-aware joint portfolio Kelly across simultaneous qualifying wagers. Do not multiply by a second N_eff evidence factor. ML posterior draws use Normal(offset, SE^2) in logit space; Spread/OU draws use their Beta posteriors. Same-game markets must be optimized jointly. If joint optimizer unavailable, report Full Kelly and mark Adjusted Kelly PORTFOLIO_PENDING rather than applying an arbitrary haircut."
+  },
+  "fold_metrics": [
+    {
+      "season": 2019,
+      "n": 1143,
+      "ml_brier": 0.2229635935274447,
+      "ml_logloss": 0.6368585427136818,
+      "spread_mae": 10.308850219291303,
+      "spread_rmse": 13.056834695039024,
+      "total_mae": 15.399435300298594,
+      "total_rmse": 19.553928612755815
+    },
+    {
+      "season": 2020,
+      "n": 1171,
+      "ml_brier": 0.2287209320943592,
+      "ml_logloss": 0.6498401368759734,
+      "spread_mae": 11.312411775211887,
+      "spread_rmse": 14.289535472914396,
+      "total_mae": 15.10586567262736,
+      "total_rmse": 19.248114225498544
+    },
+    {
+      "season": 2021,
+      "n": 1323,
+      "ml_brier": 0.22113387703697612,
+      "ml_logloss": 0.6334420847640622,
+      "spread_mae": 11.172733090407274,
+      "spread_rmse": 14.243468725073999,
+      "total_mae": 15.058777429197438,
+      "total_rmse": 19.017375366962483
+    },
+    {
+      "season": 2022,
+      "n": 1320,
+      "ml_brier": 0.22642172922639844,
+      "ml_logloss": 0.6442454943031021,
+      "spread_mae": 10.21027404518293,
+      "spread_rmse": 12.939989239300312,
+      "total_mae": 14.906368945164328,
+      "total_rmse": 19.118799719137268
+    },
+    {
+      "season": 2023,
+      "n": 1319,
+      "ml_brier": 0.21036587092890202,
+      "ml_logloss": 0.6079364607773721,
+      "spread_mae": 11.042075534904367,
+      "spread_rmse": 14.181305258126883,
+      "total_mae": 14.788399730191868,
+      "total_rmse": 18.532780295174497
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "train_last": "2024-06-17",
+  "holdout_first": "2024-10-22",
+  "training_pairs": 22339,
+  "unconstrained_training_cross_product": -0.011197849587533837,
+  "training_date_bootstrap_cross_product_ci": [
+    -0.02198693579776652,
+    0.0003037004883285836
+  ],
+  "holdout_pairs": 4869,
+  "estimated_nonnegative_daily_margin_rho": 0.0,
+  "holdout_pair_logscore_delta": 0.0,
+  "holdout_date_bootstrap_ci": [
+    0.0,
+    0.0
+  ],
+  "integer_spread_push_rate": 0.03642121931908155,
+  "working_cross_game_assumption": "INDEPENDENT_GAMES",
+  "same_game_assumption": "COMMON_HOME_MARGIN_RANK_WITH_MONOTONICITY_CHECK",
+  "operational_status": "SHADOW_ADJUSTED_KELLY; conditional scenario model, not validated joint calibration"
+}

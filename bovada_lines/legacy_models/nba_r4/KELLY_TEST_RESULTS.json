@@ -1,0 +1,8 @@
+{
+  "single_bet_matches_full_kelly": true,
+  "negative_edge_zero": true,
+  "perfect_correlation_total_exposure": true,
+  "independent_symmetric_joint_optimum": true,
+  "no_double_uncertainty_haircut": true,
+  "invalid_weights_rejected": true
+}

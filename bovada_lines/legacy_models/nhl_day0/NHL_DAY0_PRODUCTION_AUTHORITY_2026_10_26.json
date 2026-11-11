@@ -1,0 +1,59 @@
+{
+  "authority_id": "NHL-DAY0-THREE-MARKET-PRODUCTION-2026-10-26-REV1",
+  "effective_date_local": "2026-10-26",
+  "decision": "USER_DIRECTED_SCORING_AUTHORITY_SWITCH",
+  "scope": "NHL pregame individual game totals, moneyline and puck line",
+  "model_health": "Watch",
+  "deployment_status": "PRODUCTION_SCORING_DESIGNATED__LIVE_INPUT_GATES_OPEN",
+  "wagering_authorized": false,
+  "authorized_stake_usd": 0.0,
+  "distinction": "Production here means the designated champion in scoreboards and immutable forecast records. It does not mean a verified live execution pipeline or authority to place wagers.",
+  "champion_and_challenger": {
+    "individual_totals": {
+      "champion": "NHL-OU-DAY0-V1-2026-10-25",
+      "champion_family": "observed market no-vig baseline + previous-season prior + frozen broad-segment residual offset shrunken with k=200",
+      "challengers": ["NHL V15 Conditional Count / OU V6"],
+      "requires_push_probability": true
+    },
+    "moneyline": {
+      "champion": "NHL-ML-DAY0-V1-2026-10-25",
+      "champion_family": "observed two-sided market no-vig anchor + frozen broad-segment residual offset shrunken with k=200",
+      "challengers": ["NHL ML V3", "ML C1 feature-logistic research"],
+      "complementary_probabilities_required": true
+    },
+    "puck_line": {
+      "champion": "NHL-PL-DAY0-V1-2026-10-25",
+      "champion_family": "observed two-sided market no-vig anchor + frozen broad-segment residual offset shrunken with k=200",
+      "challengers": ["NHL PL V1", "PL C1 conditional-margin research", "Structural V2 research"],
+      "exact_signed_spreads_required": true
+    }
+  },
+  "preserved_unmodified": [
+    "NHL Grand Salami totals V1",
+    "NHL Grand Salami Spread Day-0 V1",
+    "all NBA production and research models",
+    "all earlier frozen NHL forecasts and past scoreboards",
+    "actual Bovada reconciled transactional P&L authority"
+  ],
+  "scoring_rules": {
+    "eligible_quote": "timestamp-observed, full paired pregame odds on same sportsbook and line, verified side orientation",
+    "missing_input": "NOT_SCORED / RESEARCH_NO_BET; never manufacture prices, fitted predictions or no-vig replacement edges",
+    "market_math": "moneyline complements, home/away plus/minus 1.5 outcomes, integer-total push-aware EV and settlement",
+    "champion_first": true,
+    "challenger_outputs": "side by side on identical pregame quote snapshots",
+    "normal_display": "Qualifying candidates first, then chronological No Bet / Research & Unapproved; hide Pass but retain every observation in the immutable ledger",
+    "model_tiers": ["A", "B+", "B", "Lean", "Pass"],
+    "all_current_day0_tiers": "RESEARCH / NO BET / UNAPPROVED",
+    "full_kelly": "diagnostic only when an independently calibrated model probability exists",
+    "adjusted_kelly": "N/A until posterior-aware joint portfolio inference is validated",
+    "actual_authorized_stake": 0.0
+  },
+  "validation_note": "2023-25 Day-0 historical comparisons are retrospective and sparse in key quote regimes; they do not establish sportsbook advantage. Prospective 2026-27 freezes are required.",
+  "reference_authorities": [
+    "NHL_DAY0_THREE_MARKET_SCORING_AUTHORITY_2026_10_25.md",
+    "NHL_DAY0_AUTHORITY_DATA_REANALYSIS_REPORT_2026_10_25.md",
+    "NHL_NBA_SCORING_CHAMPION_CHALLENGER_SETTING.md",
+    "NHL_DAY0_MERGED_V15_MLPL_RESEARCH_2026_10_26.zip"
+  ],
+  "prior_role_override": "Supersedes V15/ML V3/PL V1 champion role labels only; those models, their fitted artifacts, frozen predictions and historical metrics are unchanged."
+}

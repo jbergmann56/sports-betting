@@ -1,0 +1,11 @@
+{
+  "nba.py": "763ae48e734e5272a040466a3f09ab7fb63d75222351e8affe18c6466959be44",
+  "scoring_core.py": "774d6be233793179e86b8c818108ef0d2bdeb155d96eea0a2b0acde1d1c08864",
+  "portfolio_kelly.py": "09476d0eaa2d8a7435fe5db092bc69a5aff4f3a14e24e44520424cf742fe546a",
+  "dependence.py": "3130924b30d23352f6f0b5f6849f0718985867738d3aff828df6ea0d046e8483",
+  "ACTIVE_RELEASE.json": "fb66e35f0ea518c3f1bee44cae2bd10a235c6f8ef8f79542f6b19dc4ff0a6f4d",
+  "DEPENDENCE_MODEL.json": "54e75861eb9bb0de623063453c3a31ef9e59d84e06e40ed5619e6ccc63cab67b",
+  "data/v27_coefficients.json": "df214c5ce427f4d39a86afd2fa301f3498e5eef77617a55e9b9e7b37f8d04771",
+  "data/history.csv": "a603842931998dfcbbfad3dd22bf9705de6f2770a14a8158ef1b29c190dbf607",
+  "data/previous_historical_master.csv": "f55989eca558908e6eb7d9075921a17a2fdc9853e0298a14c4b3c36353270485"
+}
