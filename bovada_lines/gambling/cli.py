@@ -135,6 +135,27 @@ def cmd_history(args, paths: Paths) -> int:
         con.close()
 
 
+def cmd_models(args, paths: Paths) -> int:
+    from . import db
+    from .db import models
+
+    con = db.open_database(paths)
+    try:
+        if args.models_command == "list":
+            _emit(models.current_releases(con, args.sport))
+        elif args.models_command == "show":
+            _emit(models.release_detail(con, args.release_id))
+        elif args.models_command == "attribution":
+            _emit(models.attribution_summary(con))
+        else:
+            result = models.verify_artifacts(con, release_id=args.release_id)
+            _emit(result)
+            return EXIT_OK if result["all_verified"] else EXIT_CHECK_FAILED
+        return EXIT_OK
+    finally:
+        con.close()
+
+
 # -- parser ------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -194,6 +215,17 @@ def build_parser() -> argparse.ArgumentParser:
     health = h_commands.add_parser("health", help="Bovada fetch reliability by day and sport")
     health.add_argument("--since", help="UTC date YYYY-MM-DD")
     history.set_defaults(handler=cmd_history)
+
+    registry = commands.add_parser("models", help="Model release registry")
+    m_commands = registry.add_subparsers(dest="models_command", required=True)
+    listing = m_commands.add_parser("list", help="Every release with its current role and authorization")
+    listing.add_argument("--sport")
+    show = m_commands.add_parser("show", help="One release: status history, files, legacy labels, predictions")
+    show.add_argument("release_id")
+    verify = m_commands.add_parser("verify", help="Re-hash every registered model file")
+    verify.add_argument("release_id", nargs="?")
+    m_commands.add_parser("attribution", help="How recorded scores map to releases; duplicates collapsed")
+    registry.set_defaults(handler=cmd_models)
     return parser
 
 

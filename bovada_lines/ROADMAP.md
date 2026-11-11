@@ -35,9 +35,16 @@ Remaining:
 
 ## Phase 2 — one model adapter at a time
 
+Model registry done (2026-11-11): 18 releases registered with artifact hashes,
+role/authority history and mappings for all 29 legacy labels; every archived
+score is attributed. Releases marked `PARTIAL` / `ARTIFACTS_MISSING` keep their
+archived predictions but cannot make new ones until rebuilt as a *new* release
+that reproduces the archived outputs (NCAAFB V2 is likely rebuildable from
+`authority.json`). NBA R3 and the NHL challengers are candidates for retirement.
+
 For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 
-1. Freeze exact file hashes, feature cutoffs and train/validation boundaries.
+1. Register the release and its artifact hashes; record feature cutoffs and train/validation boundaries.
 2. Refactor the existing source into a uniform `score(game, odds, state)` contract.
 3. Compare exact known-game Model P, tier, EV, and Full/Adjusted Kelly against
    golden outputs for several archived cohorts.

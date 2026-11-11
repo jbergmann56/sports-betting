@@ -36,6 +36,12 @@ python -m gambling history find "Celtics"        # look up game keys
 python -m gambling history lines NBA:BOVADA:33233970
 python -m gambling history health                # how reliable Bovada fetches were, by day/sport
 
+# model registry
+python -m gambling models list                   # every release: role, authority, betting, files
+python -m gambling models show NBA_R4_V27_20261030
+python -m gambling models verify                 # re-hash every registered model file
+python -m gambling models attribution            # how all recorded scores map to releases
+
 python -m gambling db status                     # migrations, counts, integrity
 python -m gambling db export                     # new dated archive under data/archives/
 
@@ -120,6 +126,32 @@ if it were a valid board and stamped it with the file's modification time.
 - **Views:** `latest_quotes`, `line_movement` (one row per distinct snapshot —
   two runs that received the same cached object count once), `capture_health`,
   `sport_health`, plus the original `game_scoring_coverage`.
+
+## Model registry (migrations `0004`–`0005`)
+
+Each prediction links to the model release that made it by `release_id`;
+hashes are not needed for that join. They confirm what a release ID means:
+
+- `model_releases` — one row per frozen release or shared component, with
+  `artifact_status` (`COMPLETE`, `IN_FROZEN_ARCHIVE`, `PARTIAL`, `ARTIFACTS_MISSING`).
+- `model_release_artifacts` — the files that define each release, with sha256
+  (`models verify` re-checks them).
+- `model_release_status` — append-only history of role (champion / challenger /
+  shadow / research / retired), scoring authority and wagering authorization,
+  each with its documented source. A later change is a new row, so the status
+  in effect at any past quote time stays queryable.
+- `model_release_aliases` — maps the 29 legacy free-text `model_version` labels
+  (per market where needed) onto releases, with evidence level.
+- New scores must carry `release_id`, and a trigger rejects a
+  `PRODUCTION_QUALIFIED` score from any release that was not a
+  wagering-authorized champion at quote time.
+
+Views: `current_release_status`, `release_status_history`,
+`model_score_attribution` (every score → release), and `model_predictions`
+(one row per distinct prediction). The legacy NCAAFB scorer stored its shared
+ML and totals components under both the champion and challenger
+configurations; those 858 duplicate rows collapse in `model_predictions`
+(champion copy kept), while `model_scores` keeps every row as recorded.
 
 ## Technical boundary
 

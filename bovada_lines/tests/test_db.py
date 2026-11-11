@@ -14,6 +14,7 @@ from gambling.db import IngestError, MigrationError, apply_migrations, connect, 
 from gambling.db.export import export_snapshot
 from gambling.db.ingest import pending_captures
 from gambling.db.migrate import available_migrations
+from gambling.db.models import attribution_summary, current_releases, release_detail, verify_artifacts
 from gambling.db.queries import capture_health, latest_quotes, line_history, status
 from gambling.history import connect_frozen, frozen_scores
 
@@ -132,6 +133,51 @@ class FrozenBaseline(unittest.TestCase):
             with self.assertRaises(sqlite3.IntegrityError, msg=sql):
                 self.con.execute(sql)
 
+    def test_every_recorded_score_is_attributed_to_a_release(self):
+        summary = attribution_summary(self.con)
+        self.assertEqual(summary["unresolved_labels"], [])
+        attributed = self.con.execute("SELECT COUNT(*) FROM model_score_attribution").fetchone()[0]
+        self.assertEqual(attributed, FROZEN_COUNTS["model_scores"])  # one alias match per score, no fan-out
+        labels = self.con.execute("SELECT COUNT(DISTINCT model_version) FROM model_scores").fetchone()[0]
+        mapped = self.con.execute("SELECT COUNT(DISTINCT model_version) FROM model_release_aliases").fetchone()[0]
+        self.assertEqual((labels, mapped), (29, 29))
+
+    def test_shared_ncaafb_components_collapse_to_one_prediction(self):
+        summary = attribution_summary(self.con)
+        self.assertEqual(summary["distinct_predictions"], FROZEN_COUNTS["model_scores"] - 858)
+        collapsed = {(r["release_id"], r["extra_copies"]) for r in summary["collapsed_copies"]}
+        self.assertEqual(collapsed, {("NCAAFB_ML_W8PLUS_RULE", 429), ("NCAAFB_OU_RESEARCH", 429)})
+        # The Nov 9-10 shared ML picks: 22 recorded production rows are 11 distinct picks.
+        rows = self.con.execute(
+            "SELECT COUNT(*) FROM model_scores WHERE model_version IN "
+            "('EXISTING-W8PLUS-ML-UNCHANGED', 'SHARED-ML-COMPONENT; no distinct ML challenger adopted') "
+            "AND action_status = 'PRODUCTION_QUALIFIED'").fetchone()[0]
+        picks = self.con.execute(
+            "SELECT COUNT(*) FROM model_predictions WHERE recorded_label IN "
+            "('EXISTING-W8PLUS-ML-UNCHANGED', 'SHARED-ML-COMPONENT; no distinct ML challenger adopted') "
+            "AND action_status = 'PRODUCTION_QUALIFIED'").fetchone()[0]
+        self.assertEqual((rows, picks), (22, 11))
+        # Kept copy is the champion's (original pre-bet authorization).
+        roles = {r[0] for r in self.con.execute(
+            "SELECT recorded_role FROM model_predictions WHERE recorded_rows > 1")}
+        self.assertEqual(roles, {"CHAMPION"})
+
+    def test_registry_role_at_quote_time(self):
+        nba = release_detail(self.con, "NBA_R4_V27_20261030")
+        self.assertEqual(nba["status_history"][0]["role"], "CHAMPION")
+        self.assertEqual(nba["release"]["artifact_status"], "COMPLETE")
+        nhl = {r["release_id"]: r for r in current_releases(self.con, "NHL")}
+        self.assertEqual(nhl["NHL_ML_DAY0_V1_20261025"]["wagering_authorized"], 0)
+        self.assertEqual(nhl["NHL_ML_DAY0_V1_20261025"]["role"], "CHAMPION")
+        mismatched = self.con.execute(
+            "SELECT COUNT(*) FROM model_predictions WHERE action_status = 'PRODUCTION_QUALIFIED' "
+            "AND (registry_role_at_quote <> 'CHAMPION' OR registry_wagering_at_quote <> 1)").fetchone()[0]
+        self.assertEqual(mismatched, 0)  # every recorded production pick came from a betting-authorized champion
+
+    def test_registered_artifacts_verify(self):
+        result = verify_artifacts(self.con)
+        self.assertTrue(result["all_verified"], [r for r in result["releases"] if r["status"] == "FAILED"])
+
     def test_export_writes_new_archive_with_manifest(self):
         target = export_snapshot(self.con, self.paths.archives)
         with zipfile.ZipFile(target) as archive:
@@ -226,6 +272,33 @@ class Ingest(unittest.TestCase):
         raw = self.con.execute("SELECT COUNT(*) FROM market_quotes WHERE game_key=? AND market='Total' "
                                "AND side='Over'", (game_key,)).fetchone()[0]
         self.assertEqual(raw, 2)  # both fetches are still recorded as evidence
+
+    def _score(self, run, *, release_id, role, status, score_id):
+        quote = self.con.execute("SELECT * FROM market_quotes WHERE batch_id=? AND market='Moneyline' "
+                                 "AND side='Away' LIMIT 1", (run.run_id,)).fetchone()
+        self.con.execute(
+            "INSERT INTO model_scores (score_id, batch_id, sport, event_id, game_key, quote_cohort_id, "
+            "quote_captured_utc, scored_time_provenance, market, selection_side, quote_id, quoted_odds, "
+            "model_role, model_version, production_authorized, action_status, source_file, source_sha256, "
+            "source_row_json, release_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (score_id, quote["batch_id"], quote["sport"], quote["event_id"], quote["game_key"],
+             quote["quote_cohort_id"], quote["quote_captured_utc"], "TEST", "Moneyline", "Away",
+             quote["quote_id"], quote["odds_american"], role, release_id or "unregistered",
+             int(status == "PRODUCTION_QUALIFIED"), status, "test", "0" * 64, "{}", release_id))
+
+    def test_new_scores_must_name_a_release_with_matching_authority(self):
+        run = capture_run(self.captures, nba_events())
+        ingest_capture(self.con, run.run_dir)
+        with self.assertRaises(sqlite3.IntegrityError):  # no release
+            self._score(run, release_id=None, role="CHAMPION", status="PASS", score_id="s1")
+        with self.assertRaises(sqlite3.IntegrityError):  # challenger cannot be production-qualified
+            self._score(run, release_id="NBA_R3_20261029", role="CHALLENGER",
+                        status="PRODUCTION_QUALIFIED", score_id="s2")
+        self._score(run, release_id="NBA_R3_20261029", role="CHALLENGER", status="RESEARCH_POSITIVE_EV", score_id="s3")
+        self._score(run, release_id="NBA_R4_V27_20261030", role="CHAMPION", status="PRODUCTION_QUALIFIED", score_id="s4")
+        attributed = dict(self.con.execute(
+            "SELECT score_id, attribution FROM model_score_attribution WHERE score_id IN ('s3','s4')").fetchall())
+        self.assertEqual(attributed, {"s3": "DIRECT", "s4": "DIRECT"})
 
     def test_new_quotes_must_use_controlled_status_vocabulary(self):
         run = capture_run(self.captures, nba_events())
