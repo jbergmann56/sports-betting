@@ -1,7 +1,0 @@
-# Local working copies / generated captures (archive in data/*.zip is the source of truth)
-data/history.sqlite
-data/gambling.sqlite
-data/gambling.sqlite-*
-data/captures/
-data/archives/
-__pycache__/
