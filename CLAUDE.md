@@ -50,3 +50,9 @@ python -m unittest discover -s tests -v
 The canonical cross-assistant policy is `docs/engineering-policy.md` — read it **before any repository change**. Also read `docs/architecture.md`, `docs/branch-strategy.md`, and the relevant `docs/sports/<sport>.md` / `docs/betsheets/shared-contract.md` when changing that workstream. Existing frozen evidence is immutable.
 
 Every change PR must update corresponding documentation, tests/fixtures, and `ROADMAP.md`; record commands and actual results. Do not claim that placeholder sport or Streamlit modules are implemented. Never untrack old files before a verified local/offline backup. See `docs/cleanup-inventory.md`.
+
+## ChatGPT ↔ Claude Code model-research handoff
+
+**Read `docs/handoff/README.md` and its linked `CURRENT_STATE.md`, `SPORT_MODELS.md`, `BETSHEETS.md`, `WAGERS_PARLAYS_BONUSES.md`, `RESEARCH_TO_DEVELOPMENT.md` and `MISSING_AND_UNCERTAIN.md` before making sport-model, betting-sheet, bankroll or performance changes.** ChatGPT leads independent research and model evaluation; Claude Code leads software development, fixture generation, CI and Streamlit. Only immutable, referenced artifact evidence plus explicit user approval can promote a model. Chat conversations are context, not code authority; the research handoff labels prior decisions, repo evidence and open verification separately.
+
+For approved changes, implement from the `docs/handoff/RESEARCH_CHANGE_REQUEST_TEMPLATE.md` ticket, preserve all previous model outputs and original tier history, attach implementation evidence to a PR, and return the results to ChatGPT for assessment. Do not call a missing model file "verified" or reuse a historical bankroll as current exposure.

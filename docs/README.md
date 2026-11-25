@@ -11,3 +11,6 @@
 - `history/migration-roadmap-2026-11.md`: preserved original migration roadmap.
 
 Before merging a behavior change, update the relevant docs, golden test fixtures, and master `ROADMAP.md`. The repository's PR template requires documented verification.
+
+- `handoff/README.md`: complete Claude Code onboarding and collaboration protocol, with current state, five-sport authority, bet sheets, P&L, parlays, bonuses and open gaps.
+- `research/README.md`: dated ChatGPT model research decisions and Claude implementation handback records.
