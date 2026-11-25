@@ -143,8 +143,13 @@ def _status(q: QuoteSide, s: ScoreRow, auth: Optional[ReleaseAuthority]) -> str:
 
 
 def assemble(quotes: Iterable[QuoteSide], scores: Iterable[ScoreRow], authority: Optional[Authority] = None,
-             releases: Optional[Sequence[str]] = None) -> list[dict]:
-    """One row per (quote side, release). Missing adapter rows become UNSCORED, never dropped."""
+             releases: Optional[Sequence[str]] = None,
+             market_releases: Optional[Mapping[str, Sequence[str]]] = None) -> list[dict]:
+    """One row per (quote side, release). Missing adapter rows become UNSCORED, never dropped.
+
+    ``market_releases`` restricts each market to the releases registered for it (sports whose
+    champion/challenger differ by market, e.g. NHL); without it every release is paired with every quote.
+    """
     quotes = list(quotes)
     by_quote: dict[tuple[str, str], ScoreRow] = {}
     for s in scores:
@@ -156,7 +161,7 @@ def assemble(quotes: Iterable[QuoteSide], scores: Iterable[ScoreRow], authority:
     q_index = {q.key: q for q in quotes}
     rows = []
     for q in quotes:
-        for rid in releases:
+        for rid in (market_releases.get(q.market, ()) if market_releases is not None else releases):
             s = by_quote.get((rid, q.quote_id)) or ScoreRow(rid, q.quote_id, "UNSCORED",
                                                              reason="NO_ADAPTER_ROW_FOR_QUOTE")
             auth = authority.at(rid, q.quote_as_of_utc) if authority else None
