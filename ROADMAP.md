@@ -112,7 +112,7 @@ Historical provenance, immutable original score/authorization and unknown accoun
 - [x] Inspect all 18 seeded release artifact/authority statuses and code-dependency paths; document evidence and gaps in `docs/handoff/MODEL_TRANSFER_AUDIT_2026-11-24.md`.
 - [x] Inspect six user-supplied NCAAFB file schemas/counts/hashes; **metadata only**, no raw data transfer to Git and no authority promotion; see `docs/handoff/LOCAL_INPUT_INVENTORY_2026-11-24.md`.
 - [x] Publish Claude model-transfer runbook and startup instructions.
-- [ ] Retrieve/verify missing NHL controls, NCAABB V5 parameter freeze, NCAAFB Weeks8-10 posterior/inputs, NBA R3 challenger, and frozen NFL ZIP scorer members.
+- [ ] Retrieve/verify missing (NHL controls: recovered — rebuilt exactly, SHA-256 `4b6119a0…`, in the NHL golden fixture), NCAABB V5 parameter freeze, NCAAFB Weeks8-10 posterior/inputs, NBA R3 challenger, and frozen NFL ZIP scorer members.
 - [ ] Execute per-release historical parity and model checksum checks in Claude's development checkout; this ChatGPT audit inspected sources but did not execute five sport runners.
 - [ ] Implement the certified shared scoring interface and first live adapter **without changing frozen model outputs**.
 - [ ] Reconcile current-season chronology, exact quotes, original tiers, score statuses and all-rows bet-sheet exports.
@@ -128,7 +128,9 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] B4: readiness CLI.
 - [x] B5–B7: adapter contract v2 (conditional probabilities, push states, NOT_EVALUATED_BY_MODEL, labelled complements per PR #4 decisions 3–4), push-aware EV/Full Kelly, Adjusted Kelly pass-through with method/certification, all-rows chronological CSV + Excel bet sheets (`tests/test_scoring_v2.py`, 22 tests).
 - [x] NFL frozen-replay adapter (REV2-CAL + W8) with golden parity and 72/72 archived-row match; complete 144-row bet sheet.
-- [ ] Remaining adapters in order NHL → NCAAFB → NBA → NCAABB, each with golden parity.
+- [x] NHL Day-0 frozen adapter (ML/PL/OU champions + V3/PL V1/V15 challengers) with golden parity: 132/132 archived rows, original 81 PASS / 44 UNSCORED / 7 RESEARCH_POSITIVE_EV split, model push probability on integer totals; no release wager-authorized.
+- [ ] Remaining adapters in order NCAAFB → NBA → NCAABB, each with golden parity.
+- [ ] NHL live use: control-file refresh decision (frozen through 2025), V15/PL V1 inputs, ChatGPT evaluation of Day-0 edge.
 - [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 

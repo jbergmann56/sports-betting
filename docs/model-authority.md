@@ -31,3 +31,4 @@ Track missing artifacts, exceptions, and any observed discrepancy under the corr
 | Date | Release(s) | Adapter | Evidence | Authority change |
 |---|---|---|---|---|
 | 2026-11-25 | `NFL_REV2_CAL_20261024`, `NFL_W8_FULL_SLOPE_20261026` | `gambling/models/nfl/rev2_legacy.py` (frozen replay) | Golden `NFL_20261110_072712CST`; 72/72 archived score rows match | **None** — roles, tiers, probabilities and wagering flags unchanged |
+| 2026-11-25 | `NHL_ML_DAY0_V1_20261025`, `NHL_PL_DAY0_V1_20261025`, `NHL_OU_DAY0_V1_20261025`, `NHL_ML_V3`, `NHL_PL_V1`, `NHL_V15_CONDITIONAL_COUNT` | `gambling/models/nhl/day0_legacy.py` (frozen replay) | Golden `NHL_DAY0_20261112`; 132/132 archived rows; EV/Full Kelly recomputed by shared pricing equal archived values | **None**: Day-0 remains scoreboard champion with `wagering_authorized=false`; challengers unchanged; PL V1/V15 stay UNSCORED |

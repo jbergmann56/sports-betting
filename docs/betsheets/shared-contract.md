@@ -48,3 +48,9 @@ A release that models a binary win probability is `SCORED` with `p_push=0` on ha
 **Exports.** CSV = every row. Excel: `All rows` (every row), `Champion vs Challenger` (same quote side, releases side by side), `Positive EV view` (labelled view; never includes derived complements), `Provenance & Legend`. `new_vs_previous` ∈ NEW / UNCHANGED / PRICE_CHANGED / LINE_CHANGED / STATUS_CHANGED / NO_PREVIOUS_SHEET.
 
 **Sport implementations.** NFL: `gambling/betsheets/nfl.build_frozen_sheet` (archived boards); regression sheet `tests/fixtures/betsheets/NFL_20261110_072712CST_betsheet.csv`.
+
+### Per-market releases (2026-11-25, NHL)
+
+A sheet has one row per quoted side × each release **registered for that side's market**. Where champion and challenger differ by market (NHL: Day-0 ML/PL/OU champions with ML V3 / PL V1 / V15 challengers), the sport builder passes `assemble(..., market_releases={market: (champion, challenger)})`. A moneyline quote is therefore never paired with a puck-line release. Sports with one release pair across all markets (NFL) omit the argument, and their behaviour is unchanged. A release with no adapter row for one of its own market's quotes is still emitted, as `UNSCORED` / `NO_ADAPTER_ROW_FOR_QUOTE`.
+
+When a release supplies its own push probability (NHL Day-0 totals on integer lines), the row is `SCORED` with `push_probability_status=MODEL`, and EV and Full Kelly use it. This is in contrast to `CONDITIONAL_SCORED` (push unknown).
