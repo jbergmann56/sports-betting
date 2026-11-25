@@ -10,6 +10,8 @@
     python -m gambling.modeldata materialize-source SHA256 DEST
     python -m gambling.modeldata materialize-run RUN_ID DEST_DIR
     python -m gambling.modeldata verify [VERSION_ID ...]
+    python -m gambling.modeldata append FILE --dataset ID       # add new/changed records to a growing master
+    python -m gambling.modeldata master DATASET DEST.csv      # write the cumulative master
     python -m gambling.modeldata snapshot DEST.sqlite         # consistent copy + .sha256 for sharing/backup
     python -m gambling.modeldata golden [--external DIR]      # import golden fixtures + prove replay
 
@@ -66,7 +68,20 @@ def main(argv=None) -> int:
     imp.add_argument("--time-column")
     imp.add_argument("--game-key-column", help="column holding the existing events.game_key")
     imp.add_argument("--review-column", action="append", default=[], metavar="NAME=JUSTIFICATION")
+    imp.add_argument("--key-column", action="append", default=[],
+                     help="record key for a growing master (repeatable); later appends supersede by key")
     imp.add_argument("--publish", action="store_true")
+    ag = sub.add_parser("append")
+    ag.add_argument("file", help="new records, or a full re-export (only records not already present are stored)")
+    ag.add_argument("--dataset", required=True)
+    ag.add_argument("--provenance", required=True)
+    ag.add_argument("--run-id")
+    ag.add_argument("--available-from")
+    ag.add_argument("--label")
+    mm = sub.add_parser("master")
+    mm.add_argument("dataset")
+    mm.add_argument("dest")
+    mm.add_argument("--as-of")
     st = sub.add_parser("status")
     st.add_argument("dataset")
     for name in ("publish", "retract"):
@@ -100,11 +115,22 @@ def main(argv=None) -> int:
         s.ensure_dataset(args.dataset, args.domain, args.sport, args.description or args.dataset)
         vid = s.import_version(args.dataset, args.label, sha, args.parser or parser_for(path.name), actor,
                                available_from_utc=args.available_from, time_column=args.time_column,
-                               reviewed_columns=reviewed, game_key_column=args.game_key_column)
+                               reviewed_columns=reviewed, game_key_column=args.game_key_column,
+                               key_columns=args.key_column or None)
         if args.publish:
             s.set_status(vid, "PUBLISHED", "published at import", actor)
         print(json.dumps({"source_sha256": sha, "version_id": vid, "status": s.status(vid),
                           **s.verify_version(vid)}))
+    elif args.cmd == "append":
+        path = Path(args.file)
+        vid = s.append_file(args.dataset, path.read_bytes(), path.name, actor, args.provenance,
+                            run_id=args.run_id, available_from_utc=args.available_from, label=args.label)
+        chain = s.chain(args.dataset)
+        print(json.dumps({"version_id": vid, "appended": 0 if vid is None else s.fetchone(
+            "SELECT row_count FROM md_dataset_versions WHERE version_id = ?", (vid,))[0],
+            "chain_length": len(chain), "master_records": len(s.master_rows(args.dataset))}))
+    elif args.cmd == "master":
+        print(s.materialize_master(args.dataset, Path(args.dest), args.as_of))
     elif args.cmd == "status":
         print(json.dumps([dict(zip(("version_id", "label", "available_from_utc", "status"), r)) for r in s.fetchall(
             "SELECT version_id, version_label, available_from_utc, status FROM md_dataset_version_status "

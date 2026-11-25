@@ -28,6 +28,15 @@
 | Separate `schema_versions` migrator | Removed; 0006 goes into `schema_migrations` |
 | No link to quotes or scores | `batch_id` / `quote_cohort_id` foreign keys on runs, `md_run_score_links` → `model_scores`, `game_key` on rows plus `md_rows_by_game` |
 
+## Growing NCAABB master (added after review)
+
+The user asked that the master stay in the database, with new records appended whenever the software runs:
+- 0006 adds `version_kind` (FULL/APPEND), `key_columns` and `produced_by_run` to `md_dataset_versions`; 0006 had not been applied anywhere outside tests.
+- New store methods: `chain`, `append_records`, `append_file`, `master_rows`, `materialize_master`. New CLI commands: `append`, `master`, `import --key-column`.
+- The golden importer stores the master once, as base version of `ncaabb/master`.
+
+On the real file, the rebuilt master matches all 29,008 × 134 values, and a rerun appends 0 records. Wiring into the daily NCAABB run waits for the NCAABB adapter.
+
 ## Before / after golden replay
 
 | Fixture | Inputs from repo (before) | Inputs materialized from `md_*` in a copy of the history DB (after) |

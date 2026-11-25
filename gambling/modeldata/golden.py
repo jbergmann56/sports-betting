@@ -44,6 +44,17 @@ def _sensitivity(name: str) -> str:
     return "PUBLIC_MARKET" if any(k in low for k in PUBLIC_MARKET) else "MODEL_INTERNAL"
 
 
+# Externals that are also growing masters: stored once as the base FULL version of a canonical
+# dataset. The golden fixture pins that base version; live runs append to the same chain.
+GROWING_MASTERS = {
+    "NCAABB/basketball_audit/v4/NCAABB_DB_CLEAN_REBUILT_2021_2025.csv": {
+        "dataset_id": "ncaabb/master", "domain": "games", "key_columns": ["game_id"],
+        "time_column": "start_time_utc",
+        "description": "NCAABB master (2021-2025 clean rebuild); base for V4; later runs append new/changed games",
+    },
+}
+
+
 def _dataset_id(fixture_id: str, rel: str) -> str:
     return f"golden/{fixture_id}/{rel}"
 
@@ -99,11 +110,20 @@ def import_golden(store: Store, external_dir: Optional[Path] = None) -> dict:
                                         ACTOR)
             if sha != entry["sha256"]:
                 raise AssertionError(f"external {entry['package_path']} differs from manifest")
-            store.ensure_dataset(_dataset_id(fid, entry["package_path"]), "replay_input", manifest.get("sport"),
-                                 f"{fid} external input {entry['package_path']}")
-            vid = store.import_version(_dataset_id(fid, entry["package_path"]), sha[:16], sha,
-                                       parser_for(entry["package_path"]), ACTOR, notes=entry["reason_not_committed"])
-            store.set_status(vid, "PUBLISHED", "golden fixture external evidence", ACTOR)
+            master = GROWING_MASTERS.get(entry["package_path"])
+            if master:
+                store.ensure_dataset(master["dataset_id"], master["domain"], manifest.get("sport"), master["description"])
+                vid = store.import_version(master["dataset_id"], f"base-{sha[:16]}", sha,
+                                           parser_for(entry["package_path"]), ACTOR,
+                                           time_column=master["time_column"], key_columns=master["key_columns"],
+                                           notes=entry["reason_not_committed"])
+            else:
+                store.ensure_dataset(_dataset_id(fid, entry["package_path"]), "replay_input", manifest.get("sport"),
+                                     f"{fid} external input {entry['package_path']}")
+                vid = store.import_version(_dataset_id(fid, entry["package_path"]), sha[:16], sha,
+                                           parser_for(entry["package_path"]), ACTOR, notes=entry["reason_not_committed"])
+            if store.status(vid) != "PUBLISHED":
+                store.set_status(vid, "PUBLISHED", "golden fixture external evidence", ACTOR)
             store.pin_input(fid, f"external/{entry['package_path']}", "INPUT", sha, vid)
             summary["versions"] += 1
             count += 1

@@ -104,6 +104,22 @@ WHERE r.game_key = ?;
 `include_untimed=True` is passed. A historical model retrieves its exact original inputs through its run
 pins, not by re-querying "latest" data.
 
+## 6a. Growing masters (NCAABB master)
+
+Some datasets grow with every run instead of being replaced. The NCAABB master
+(`NCAABB_DB_CLEAN_REBUILT_2021_2025.csv`, 29,008 games × 134 columns, SHA-256 `9d2e77c0…`) is stored in
+the database as dataset `ncaabb/master`:
+
+- **Base:** one `FULL` version holding the original file byte-for-byte, keyed by `game_id`, with time column `start_time_utc`. The NCAABB golden fixture pins this same version, so the rows are stored once.
+- **Each run:** `append_records(dataset, records, run_id=...)` or `python -m gambling.modeldata append FILE --dataset ncaabb/master --run-id RUN` writes one `APPEND` version. It is chained to the previous head by `parent_version_id` and records which run produced it in `produced_by_run`. Only new or changed records are stored. A record identical to one already in the chain is skipped, and a rerun with nothing new writes nothing. Passing a full re-export is fine: only its delta is stored, and the re-export's SHA-256 goes into the provenance.
+- **Corrections:** a record with an existing `game_id` (for example, a final score filled in) supersedes the earlier one in the master view. The earlier record is kept (`master_rows(..., latest_by_key=False)`).
+- **Reading:** `master_rows("ncaabb/master")`, `master_rows(..., as_of_utc=T)` (the master as it stood at T), or `python -m gambling.modeldata master ncaabb/master OUT.csv`.
+- **Rules:** the columns must match the base exactly; a schema change needs a new `FULL` version. A `RETRACTED` append drops out of the chain, and the next append attaches to the last good version. Appends to a published master are published. Appends inherit the base's sensitivity (`CONTAINS_USER_OBSERVATION_FLAGS`).
+
+Verified on the real file: the rebuilt master matches the original on all 29,008 × 134 values, and re-appending the full file stores 0 records (2.6 s).
+
+**Not yet wired:** the NCAABB adapter is last in the sport order, so no daily NCAABB run calls `append_records` yet. That call becomes the final step of the NCAABB pipeline when it is built.
+
 ## 7. Import pipeline
 
 `python -m gambling.modeldata [--db PATH]`. The database is `--db`, else `$GAMBLING_DB`, else `data/gambling.sqlite`.
@@ -116,6 +132,9 @@ pins, not by re-querying "latest" data.
 | `status DATASET` | List versions and their current status |
 | `materialize-source SHA DEST`, `materialize-run RUN DEST` | Re-create the exact files |
 | `verify [VERSION ...]` | Re-parse the preserved bytes and compare every row hash |
+| `import ... --key-column game_id` | Mark a FULL version as the base of a growing master |
+| `append FILE --dataset ID [--run-id] [--provenance]` | Append new or changed records as an APPEND version |
+| `master DATASET DEST.csv [--as-of T]` | Write the cumulative master |
 | `snapshot DEST.sqlite` | Consistent online-backup copy plus `DEST.sqlite.sha256`, for sharing with ChatGPT or offline backup. Never overwrites. |
 | `golden [--external DIR]` | Import the five golden fixtures (plus the frozen ZIP and the NCAABB externals) and replay them from the database |
 
@@ -156,6 +175,6 @@ The import produced 48 sources and 37 versions. The runs reference 13 registered
 ## 11. Known limitations
 
 - Rows store values as text in source order: lossless, but not typed. Typed projections (odds, features) are a later migration.
-- **Size:** each source is stored once as chunks and once as parsed rows. Importing the 81 MB NCAABB external inputs grows the file by about 260 MB (the proof copy went from 42 MB to 303 MB). Run the golden proof on a copy. Decide separately whether the live file should hold the NCAABB master, or only its SHA-256 and a pointer.
+- **Size:** each source is stored once as chunks and once as parsed rows. Importing the NCAABB externals (the 51.6 MB master plus the 29.6 MB schedule) grows the file by about 260 MB; the proof copy went from 42 MB to 304 MB. The user decided the master stays in the live database. Appends add only their delta.
 - The NCAABB master carries user-observation flags (`CONTAINS_USER_OBSERVATION_FLAGS`). A snapshot that includes it must not be shared publicly.
 - `md_dataset_rows.game_key` is not a foreign key, because `events` is keyed by `(batch_id, sport, event_id)` and a game appears in many batches. Joins go through `md_rows_by_game`.

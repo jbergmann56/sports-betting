@@ -197,6 +197,76 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(ModelDataError):
                 self.s.snapshot(Path(d) / "snap.sqlite")
 
+    # ---------------------------------------------------------------- growing master
+    def _master(self):
+        data = (b"game_id,start_time_utc,home_score,actual_bet_status,stake_eligible\n"
+                b"1,2026-11-01T18:00:00Z,70,No bet,False\n"
+                b"2,2026-11-02T18:00:00Z,,No bet,False\n")
+        sha = self.reg(data, "master.csv", "CONTAINS_USER_OBSERVATION_FLAGS")
+        self.s.ensure_dataset("ncaabb/master", "games", "NCAABB", "test master")
+        vid = self.s.import_version("ncaabb/master", "base", sha, "csv", "t", time_column="start_time_utc",
+                                    key_columns=["game_id"], reviewed_columns={"stake_eligible": "model flag"})
+        self.s.set_status(vid, "PUBLISHED", "ok", "t")
+        return vid
+
+    def rec(self, gid, t, score, status="No bet"):
+        return {"game_id": gid, "start_time_utc": t, "home_score": score, "actual_bet_status": status,
+                "stake_eligible": "False"}
+
+    def test_append_adds_only_new_or_changed_records(self):
+        base = self._master()
+        self.s.register_run("ncaabb-run-1", "LIVE", ["NCAABB_V4_PROD_THROUGH2025"], {}, [], sport="NCAABB")
+        v1 = self.s.append_records("ncaabb/master", [
+            self.rec("2", "2026-11-02T18:00:00Z", ""),        # identical: skipped
+            self.rec("2", "2026-11-02T18:00:00Z", "65"),      # result filled in: supersedes by key
+            self.rec("3", "2026-11-03T18:00:00Z", ""),        # new game
+        ], "t", "unit test run", run_id="ncaabb-run-1")
+        self.assertEqual(self.s.chain("ncaabb/master"), [base, v1])
+        meta = self.s.fetchone("SELECT version_kind, parent_version_id, produced_by_run, row_count "
+                               "FROM md_dataset_versions WHERE version_id = ?", (v1,))
+        self.assertEqual(meta, ("APPEND", base, "ncaabb-run-1", 2))
+        self.assertEqual(self.s.status(v1), "PUBLISHED")  # inherits the published master
+        master = self.s.master_rows("ncaabb/master")
+        self.assertEqual([(r["game_id"], r["home_score"]) for r in master], [("1", "70"), ("2", "65"), ("3", "")])
+        history = self.s.master_rows("ncaabb/master", latest_by_key=False)
+        self.assertEqual(len(history), 4)  # the superseded record is still kept
+        self.assertIsNone(self.s.append_records("ncaabb/master", [self.rec("3", "2026-11-03T18:00:00Z", "")],
+                                                "t", "rerun"))  # nothing new, nothing written
+        self.assertTrue(self.s.verify_version(v1)["lossless"])
+
+    def test_append_rejects_schema_drift(self):
+        self._master()
+        with self.assertRaisesRegex(ModelDataError, "schema change"):
+            self.s.append_records("ncaabb/master", [{"game_id": "9", "start_time_utc": ""}], "t", "x")
+        with self.assertRaisesRegex(ModelDataError, "no FULL base"):
+            self.s.append_records("nope/none", [], "t", "x")
+
+    def test_append_file_stores_only_the_delta(self):
+        self._master()
+        full = (b"game_id,start_time_utc,home_score,actual_bet_status,stake_eligible\n"
+                b"1,2026-11-01T18:00:00Z,70,No bet,False\n"
+                b"2,2026-11-02T18:00:00Z,,No bet,False\n"
+                b"4,2026-11-04T18:00:00Z,,No bet,False\n")
+        vid = self.s.append_file("ncaabb/master", full, "reexport.csv", "t", "re-export")
+        self.assertEqual(self.s.fetchone("SELECT row_count FROM md_dataset_versions WHERE version_id = ?",
+                                         (vid,))[0], 1)
+        src = self.s.fetchone("SELECT s.provenance, s.sensitivity FROM md_dataset_versions v JOIN md_source_files s "
+                              "ON s.sha256 = v.source_sha256 WHERE v.version_id = ?", (vid,))
+        self.assertIn(sha256_bytes(full), src[0])
+        self.assertEqual(src[1], "CONTAINS_USER_OBSERVATION_FLAGS")
+        with tempfile.TemporaryDirectory() as d:
+            text = self.s.materialize_master("ncaabb/master", Path(d) / "m.csv").read_text()
+        self.assertEqual(text.splitlines()[-1], "4,2026-11-04T18:00:00Z,,No bet,False")
+
+    def test_retracted_append_drops_out_of_the_master(self):
+        self._master()
+        v1 = self.s.append_records("ncaabb/master", [self.rec("5", "2026-11-05T18:00:00Z", "")], "t", "x")
+        self.s.set_status(v1, "RETRACTED", "bad run", "t")
+        self.assertEqual([r["game_id"] for r in self.s.master_rows("ncaabb/master")], ["1", "2"])
+        v2 = self.s.append_records("ncaabb/master", [self.rec("6", "2026-11-06T18:00:00Z", "")], "t", "x")
+        self.assertEqual(self.s.fetchone("SELECT parent_version_id FROM md_dataset_versions WHERE version_id = ?",
+                                         (v2,))[0], self.s.chain("ncaabb/master")[0])
+
     @unittest.skipIf(importlib.util.find_spec("pyarrow") is None, "pyarrow not installed")
     def test_parquet_import(self):
         import pyarrow as pa

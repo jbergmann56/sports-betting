@@ -228,7 +228,8 @@ class Store:
                        actor: str, available_from_utc: Optional[str] = None, time_column: Optional[str] = None,
                        parent_version_id: Optional[int] = None, notes: Optional[str] = None,
                        reviewed_columns: Optional[dict[str, str]] = None,
-                       game_key_column: Optional[str] = None) -> int:
+                       game_key_column: Optional[str] = None, key_columns: Optional[Sequence[str]] = None,
+                       version_kind: str = "FULL", produced_by_run: Optional[str] = None) -> int:
         existing = self.fetchone("SELECT version_id, source_sha256 FROM md_dataset_versions WHERE dataset_id = ? AND "
                                  "version_label = ?", (dataset_id, version_label))
         if existing:
@@ -244,6 +245,11 @@ class Store:
         if game_key_column and game_key_column not in columns:
             raise ModelDataError(f"game_key_column {game_key_column!r} not in columns")
         g_idx = columns.index(game_key_column) if game_key_column else None
+        missing_keys = [k for k in (key_columns or []) if k not in columns]
+        if missing_keys:
+            raise ModelDataError(f"key_columns {missing_keys} not in columns")
+        if version_kind == "APPEND" and parent_version_id is None:
+            raise ModelDataError("an APPEND version needs its parent version")
         row_hashes = []
         payload = []
         for n, values in enumerate(rows):
@@ -255,10 +261,12 @@ class Store:
         with self.tx():
             cur = self.execute("INSERT INTO md_dataset_versions (dataset_id, version_label, source_sha256, parser, "
                                "available_from_utc, time_column, game_key_column, row_count, column_count, content_sha256, "
-                               "parent_version_id, import_tool, created_utc, notes) "
-                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               "parent_version_id, version_kind, key_columns, produced_by_run, import_tool, created_utc, "
+                               "notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                (dataset_id, version_label, source_sha256, parser, available_from_utc, time_column, game_key_column,
-                                len(rows), len(columns), content, parent_version_id, IMPORT_TOOL, utcnow(), notes))
+                                len(rows), len(columns), content, parent_version_id, version_kind,
+                                json.dumps(list(key_columns)) if key_columns else None, produced_by_run,
+                                IMPORT_TOOL, utcnow(), notes))
             version_id = int(cur.lastrowid)
             if columns:
                 self.con.executemany(("INSERT INTO md_dataset_columns VALUES (?, ?, ?, ?, ?)"),
@@ -271,6 +279,144 @@ class Store:
             self.execute("INSERT INTO md_dataset_version_events (version_id, status, reason, event_utc, actor) "
                          "VALUES (?, 'STAGED', ?, ?, ?)", (version_id, "imported", utcnow(), actor))
         return version_id
+
+    # ------------------------------------------------------------------ growing masters (append chains)
+    def chain(self, dataset_id: str) -> list[int]:
+        """Versions of the current master, base FULL version first, then APPEND versions in order.
+
+        The base is the latest non-retracted FULL version; an APPEND whose ancestry is retracted
+        ends the chain there.
+        """
+        versions = self.fetchall("SELECT version_id, parent_version_id, version_kind FROM md_dataset_versions "
+                                 "WHERE dataset_id = ? ORDER BY version_id", (dataset_id,))
+        live = [v for v in versions if self.status(v[0]) != "RETRACTED"]
+        bases = [v[0] for v in live if v[2] == "FULL"]
+        if not bases:
+            return []
+        out = [bases[-1]]
+        children = {v[1]: v[0] for v in live if v[2] == "APPEND"}
+        while out[-1] in children:
+            out.append(children[out[-1]])
+        return out
+
+    def _version_meta(self, version_id: int) -> dict:
+        r = self.fetchone("SELECT v.dataset_id, v.parser, v.time_column, v.game_key_column, v.key_columns, "
+                          "v.available_from_utc, s.sensitivity, v.version_label FROM md_dataset_versions v "
+                          "JOIN md_source_files s ON s.sha256 = v.source_sha256 WHERE v.version_id = ?", (version_id,))
+        keys = ["dataset_id", "parser", "time_column", "game_key_column", "key_columns", "available_from_utc",
+                "sensitivity", "version_label"]
+        meta = dict(zip(keys, r))
+        meta["key_columns"] = json.loads(meta["key_columns"]) if meta["key_columns"] else None
+        meta["reviewed"] = {n: "reviewed in base version" for (n,) in self.fetchall(
+            "SELECT name FROM md_dataset_columns WHERE version_id = ? AND flagged = 'REVIEWED_MODEL_FIELD'",
+            (version_id,))}
+        return meta
+
+    def master_rows(self, dataset_id: str, as_of_utc: Optional[str] = None,
+                    latest_by_key: bool = True) -> list[dict]:
+        """The cumulative master: every record of the chain, later records superseding earlier ones by key.
+
+        ``as_of_utc`` limits the chain to versions created at or before the cutoff, so a historical run
+        sees the master as it stood then.
+        """
+        chain = self.chain(dataset_id)
+        if as_of_utc:
+            cut = _ts(as_of_utc)
+            created = dict(self.fetchall("SELECT version_id, created_utc FROM md_dataset_versions WHERE dataset_id = ?",
+                                         (dataset_id,)))
+            chain = [v for v in chain if _ts(created[v]) <= cut]
+        if not chain:
+            return []
+        keys = self._version_meta(chain[0])["key_columns"] if latest_by_key else None
+        merged: dict = {}
+        for n, vid in enumerate(chain):
+            for i, row in enumerate(self.rows(vid)):
+                k = tuple(row[c] for c in keys) if keys else (n, i)
+                merged.pop(k, None)  # a superseding record moves to the end, in the order it arrived
+                merged[k] = row
+        return list(merged.values())
+
+    def append_records(self, dataset_id: str, records: Sequence[dict], actor: str, provenance: str,
+                       run_id: Optional[str] = None, available_from_utc: Optional[str] = None,
+                       label: Optional[str] = None, notes: Optional[str] = None) -> Optional[int]:
+        """Append new or changed records to a growing master as one APPEND version.
+
+        Records must carry exactly the master's columns (a schema change needs a new FULL version).
+        Records identical to one already in the chain are skipped; if nothing is new, nothing is
+        written and None is returned. The delta is stored as its own CSV source, so each append is
+        evidence in its own right and the 50 MB base is never copied again.
+        """
+        chain = self.chain(dataset_id)
+        if not chain:
+            raise ModelDataError(f"{dataset_id} has no FULL base version to append to")
+        head, base = chain[-1], self._version_meta(chain[0])
+        columns = self.columns(chain[0])
+        for n, rec in enumerate(records):
+            extra, missing = set(rec) - set(columns), set(columns) - set(rec)
+            if extra or missing:
+                raise ModelDataError(f"record {n} does not match the {dataset_id} columns "
+                                     f"(extra {sorted(extra)}, missing {sorted(missing)}); "
+                                     "a schema change needs a new FULL version")
+        seen = {h for vid in chain for (h,) in
+                self.fetchall("SELECT row_sha256 FROM md_dataset_rows WHERE version_id = ?", (vid,))}
+        new, batch_hashes = [], set()
+        for rec in records:
+            values = ["" if rec[c] is None else str(rec[c]) for c in columns]
+            h = sha256_bytes(json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+            if h not in seen and h not in batch_hashes:
+                batch_hashes.add(h)
+                new.append(values)
+        if not new:
+            return None
+        buf = io.StringIO()
+        w = csv.writer(buf, lineterminator="\n")
+        w.writerow(columns)
+        w.writerows(new)
+        data = buf.getvalue().encode("utf-8")
+        label = label or f"append-{utcnow()}-{sha256_bytes(data)[:12]}"
+        with self.tx():
+            sha = self.register_source(data, f"{dataset_id.replace('/', '_')}_{label}.csv", base["sensitivity"],
+                                       provenance, actor)
+            vid = self.import_version(dataset_id, label, sha, "csv", actor,
+                                      available_from_utc=available_from_utc, time_column=base["time_column"],
+                                      parent_version_id=head, notes=notes, reviewed_columns=base["reviewed"],
+                                      game_key_column=base["game_key_column"], key_columns=base["key_columns"],
+                                      version_kind="APPEND", produced_by_run=run_id)
+            if self.status(head) == "PUBLISHED":
+                self.set_status(vid, "PUBLISHED", "append to published master", actor)
+        return vid
+
+    def append_file(self, dataset_id: str, data: bytes, original_name: str, actor: str, provenance: str,
+                    run_id: Optional[str] = None, available_from_utc: Optional[str] = None,
+                    label: Optional[str] = None) -> Optional[int]:
+        """Append the records of a full re-export that are not already in the master.
+
+        The re-export's SHA-256 is recorded in the delta's provenance; only the delta is stored.
+        """
+        columns, _, rows = parse_table(data, parser_for(original_name))
+        master_cols = self.columns(self.chain(dataset_id)[0]) if self.chain(dataset_id) else None
+        if master_cols is not None and columns != master_cols:
+            raise ModelDataError(f"{original_name} columns differ from the {dataset_id} master; "
+                                 "a schema change needs a new FULL version")
+        records = [dict(zip(columns, ["" if v is None else v for v in r])) for r in rows]
+        return self.append_records(dataset_id, records, actor,
+                                   f"{provenance}; delta of {original_name} sha256={sha256_bytes(data)}",
+                                   run_id=run_id, available_from_utc=available_from_utc, label=label)
+
+    def materialize_master(self, dataset_id: str, dest: Path, as_of_utc: Optional[str] = None) -> Path:
+        """Write the cumulative master as CSV (values exact; formatting is csv-module, not the original file)."""
+        chain = self.chain(dataset_id)
+        if not chain:
+            raise ModelDataError(f"{dataset_id} has no versions")
+        columns = self.columns(chain[0])
+        dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with dest.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            w.writerow(columns)
+            for row in self.master_rows(dataset_id, as_of_utc):
+                w.writerow(["" if row[c] is None else row[c] for c in columns])
+        return dest
 
     def set_status(self, version_id: int, status: str, reason: str, actor: str) -> None:
         self.execute("INSERT INTO md_dataset_version_events (version_id, status, reason, event_utc, actor) "

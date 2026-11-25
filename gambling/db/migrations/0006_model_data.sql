@@ -14,6 +14,8 @@
 --   md_source_file_chunks  the bytes, 1 MiB chunks
 --   md_datasets            logical datasets (games, ratings, features, replay inputs ...)
 --   md_dataset_versions    immutable parsed versions with availability time and content hash
+--                          FULL = a complete dataset; APPEND = only the records a later run added,
+--                          chained by parent_version_id (growing masters such as the NCAABB master)
 --   md_dataset_version_events  append-only status (STAGED/PUBLISHED/SUPERSEDED/RETRACTED)
 --   md_dataset_columns     column catalog with user-observation flags
 --   md_dataset_rows        lossless rows (JSON array of text values), optional time and game_key
@@ -67,6 +69,9 @@ CREATE TABLE md_dataset_versions (
  column_count INTEGER NOT NULL,
  content_sha256 TEXT NOT NULL,
  parent_version_id INTEGER REFERENCES md_dataset_versions(version_id),
+ version_kind TEXT NOT NULL DEFAULT 'FULL' CHECK (version_kind IN ('FULL', 'APPEND')),
+ key_columns TEXT,                -- JSON array; records with the same key supersede earlier ones in the master view
+ produced_by_run TEXT REFERENCES md_model_runs(run_id),
  import_tool TEXT NOT NULL,
  created_utc TEXT NOT NULL,
  notes TEXT,
