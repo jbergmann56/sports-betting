@@ -88,10 +88,10 @@ repairs and without a chat history dependency.
 - [x] Preserve pre-reorganization migration plan in `docs/history/migration-roadmap-2026-11.md`.
 - [x] Publish canonical engineering policy, package boundaries, branch strategy, model-authority and shared bet-sheet contract.
 - [x] Publish separate NFL, NCAAFB, NBA, NHL, NCAABB and Streamlit specifications.
-- [ ] Scaffold sport model and bet-sheet packages and CI documentation gates.
-- [ ] Run automated tests and historical parity/audit checks; attach evidence to reorganization PR.
+- [x] Scaffold sport model and bet-sheet packages and CI documentation gates.
+- [x] Run offline tests and frozen-history audit in GitHub Actions (run 45529455524): documentation gate, unit tests, and frozen-history audit passed. Five-sport *live-model parity* remains a separate, outstanding certification.
 - [ ] Merge validated `reorg/v1` to `main` only after checks.
-- [ ] Create six workstream branches from integrated baseline.
+- [x] Create six workstream branches provisionally at reorg/v1 head; synchronize them with validated main after integration.
 - [ ] Verify separate offline/local backup before untracking any cleanup candidate.
 - [ ] Inventory and integrate post-November-11 model and bet-sheet changes from their actual source.
 
