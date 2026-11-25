@@ -189,3 +189,9 @@ frozen scoring output and known point-in-time inputs.
 
 Read `CLAUDE.md` for mandatory model and data safeguards and `ROADMAP.md` for
 the incremental build.
+
+## Development and documentation workflow (V1)
+
+The source-of-truth engineering rules are in [docs/engineering-policy.md](docs/engineering-policy.md). See [docs/branch-strategy.md](docs/branch-strategy.md) for sport-specific branches and the Streamlit workstream, [docs/betsheets/shared-contract.md](docs/betsheets/shared-contract.md) for required bet-sheet columns and statuses, and [ROADMAP.md](ROADMAP.md) for actual implementation status.
+
+The `gambling/models/<sport>/` and `gambling/betsheets/<sport>/` directories are reserved for validated adapters; the archived models under `legacy_models/` remain immutable. Creating these directories does not make archived models executable live models. Code, tests, model registry and documentation must change together.

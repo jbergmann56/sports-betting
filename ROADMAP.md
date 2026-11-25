@@ -82,3 +82,17 @@ frozen champion and challenger, flag new vs previous bets, log passes and
 missing inputs, attach yesterday's finals, update historical ledgers, calculate
 research parlays, and export the chronological bet sheet—without manual data
 repairs and without a chat history dependency.
+
+## Phase R1 — repository/workstream reorganization (2026-11-24, in progress)
+
+- [x] Preserve pre-reorganization migration plan in `docs/history/migration-roadmap-2026-11.md`.
+- [x] Publish canonical engineering policy, package boundaries, branch strategy, model-authority and shared bet-sheet contract.
+- [x] Publish separate NFL, NCAAFB, NBA, NHL, NCAABB and Streamlit specifications.
+- [ ] Scaffold sport model and bet-sheet packages and CI documentation gates.
+- [ ] Run automated tests and historical parity/audit checks; attach evidence to reorganization PR.
+- [ ] Merge validated `reorg/v1` to `main` only after checks.
+- [ ] Create six workstream branches from integrated baseline.
+- [ ] Verify separate offline/local backup before untracking any cleanup candidate.
+- [ ] Inventory and integrate post-November-11 model and bet-sheet changes from their actual source.
+
+This phase is structure and documentation only: no model promotion, recalibration, odds/pricing logic change, or wager settlement rewrite is authorized. The archived November 11 board is not necessarily the newest bet sheet.

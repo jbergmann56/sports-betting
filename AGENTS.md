@@ -44,3 +44,9 @@ python -m gambling audit
 python -m gambling replay --date 2026-11-11
 python -m unittest discover -s tests -v
 ```
+
+## V1 architecture and documentation workflow
+
+The canonical cross-assistant policy is `docs/engineering-policy.md` — read it **before any repository change**. Also read `docs/architecture.md`, `docs/branch-strategy.md`, and the relevant `docs/sports/<sport>.md` / `docs/betsheets/shared-contract.md` when changing that workstream. Existing frozen evidence is immutable.
+
+Every change PR must update corresponding documentation, tests/fixtures, and `ROADMAP.md`; record commands and actual results. Do not claim that placeholder sport or Streamlit modules are implemented. Never untrack old files before a verified local/offline backup. See `docs/cleanup-inventory.md`.

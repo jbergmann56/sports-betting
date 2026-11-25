@@ -53,3 +53,11 @@ bovada_transactions/*
 
 # ---- Migration bundles / ad-hoc archives ------------------------------------
 migration_files/
+
+# ---- Local-only reviewed material; never commit -----------------------------
+.local_archive/
+.local_archive*/
+scratch/
+tmp/
+*.tmp
+# Already tracked files require a separate, backup-verified untracking PR.
