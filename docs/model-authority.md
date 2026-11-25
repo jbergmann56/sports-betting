@@ -25,3 +25,9 @@ python -m unittest discover -s tests -v
 ```
 
 Track missing artifacts, exceptions, and any observed discrepancy under the corresponding sport document. A command in this document is a required verification step, not evidence that it has already passed.
+
+## Adapter status (append-only log)
+
+| Date | Release(s) | Adapter | Evidence | Authority change |
+|---|---|---|---|---|
+| 2026-11-25 | `NFL_REV2_CAL_20261024`, `NFL_W8_FULL_SLOPE_20261026` | `gambling/models/nfl/rev2_legacy.py` (frozen replay) | Golden `NFL_20261110_072712CST`; 72/72 archived score rows match | **None** — roles, tiers, probabilities and wagering flags unchanged |
