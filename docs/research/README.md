@@ -10,3 +10,5 @@ This area is the durable interface between ChatGPT model evaluation and Claude C
 Only small human-readable specifications and safe test fixtures should be committed. Do not store actual betting-account exports, credentials, personal finance details, raw unrestricted data or unverified reports in Git.
 
 A discussion is never evidence that a model was promoted. The model registry and historical status history establish past scoring/authorization, and approved implementations record new release IDs.
+
+- `decisions/2026-11-24-claude-replay-six-questions.md`: six methodological answers to Claude's five-sport replay questions, with verified repository evidence and unresolved provenance separated.
