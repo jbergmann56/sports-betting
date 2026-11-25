@@ -50,3 +50,11 @@ A single reproducible, multi-sport pipeline that captures time-stamped Bovada li
 ## First recommended Claude session
 
 Read every document above; run the repository unit tests and frozen audit; inspect the model registry and missing model artifacts; inventory the *actual* code behind each current bet sheet; record any missing post-Nov-11 files or approvals; then propose ONE sport-specific adapter/fixture PR. See the requests in `MISSING_AND_UNCERTAIN.md`. No automatic promotion or score approximation.
+
+## New verified model-transfer audit (November 24, 2026)
+
+- `MODEL_TRANSFER_AUDIT_2026-11-24.md`: primary-source-backed status for all 18 releases and five sports, source dependency blockers and implementation order.
+- `LOCAL_INPUT_INVENTORY_2026-11-24.md`: six user-supplied NCAAFB file hashes, counts, missing slopes, 2023 reconstruction limits and safe local transfer.
+- `CLAUDE_MODEL_TRANSFER_RUNBOOK.md`: explicit commands, artifact-recovery gates, one-adapter-at-a-time implementation and ChatGPT research handback.
+
+These supplement, rather than override, the existing architecture, recorded authorities and research decisions. The NCAAFB raw files are **not committed or available to Claude merely because hashes are documented**.
