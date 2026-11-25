@@ -45,5 +45,6 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 - `gambling/scoring/pricing.py` — push-aware EV / Full Kelly with basis and null reasons; Adjusted Kelly pass-through only.
 - `gambling/scoring/sheet.py` — assembly (quote side × release), labelled complements, registry authority at quote time, chronological sort, new-vs-previous.
 - `gambling/betsheets/export.py` — all-rows CSV and Excel workbook.
+- `gambling/scoring/sheet.Authority.from_connection(con)` — registry authority from an open connection (sport sheet builders, tests on a temporary migrated database).
 
 Dependency direction: adapters → `ScoreRow`; `scoring` reads `ScoreRow` + `QuoteSide` + registry; `betsheets` reads assembled rows. No layer below `scoring` assigns tier, EV or authorization. See `docs/betsheets/shared-contract.md` for column semantics.

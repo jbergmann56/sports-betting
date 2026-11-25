@@ -69,15 +69,20 @@ class Authority:
         self._rows = sorted(history, key=lambda r: (r["release_id"], r["effective_from_utc"]))
 
     @classmethod
+    def from_connection(cls, con) -> "Authority":
+        cur = con.execute("select release_id, role, scoring_authority, wagering_authorized, effective_from_utc, "
+                          "effective_until_utc from release_status_history")
+        names = [d[0] for d in cur.description]
+        return cls([dict(zip(names, r)) for r in cur.fetchall()])
+
+    @classmethod
     def from_sqlite(cls, path: str) -> "Authority":
         import sqlite3
         con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-        con.row_factory = sqlite3.Row
-        rows = [dict(r) for r in con.execute(
-            "select release_id, role, scoring_authority, wagering_authorized, effective_from_utc, "
-            "effective_until_utc from release_status_history")]
-        con.close()
-        return cls(rows)
+        try:
+            return cls.from_connection(con)
+        finally:
+            con.close()
 
     def at(self, release_id: str, when_utc: str) -> Optional[ReleaseAuthority]:
         chosen = None

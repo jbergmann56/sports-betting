@@ -127,7 +127,9 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] B1: external-input storage — superseded by the model-input database design (`docs/model-data/`).
 - [ ] B4: readiness CLI.
 - [x] B5–B7: adapter contract v2 (conditional probabilities, push states, NOT_EVALUATED_BY_MODEL, labelled complements per PR #4 decisions 3–4), push-aware EV/Full Kelly, Adjusted Kelly pass-through with method/certification, all-rows chronological CSV + Excel bet sheets (`tests/test_scoring_v2.py`, 22 tests).
-- [ ] Sport adapters in order NFL → NHL → NCAAFB → NBA → NCAABB, each with golden parity.
+- [x] NFL frozen-replay adapter (REV2-CAL + W8) with golden parity and 72/72 archived-row match; complete 144-row bet sheet.
+- [ ] Remaining adapters in order NHL → NCAAFB → NBA → NCAABB, each with golden parity.
+- [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
 No model was refit, re-tiered or promoted; no wager authorization changed.

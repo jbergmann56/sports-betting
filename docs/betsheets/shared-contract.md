@@ -46,3 +46,5 @@ A release that models a binary win probability is `SCORED` with `p_push=0` on ha
 **Status (presentation only).** From the model's recorded `action_class` and registry authority at quote time: `PRODUCTION_QUALIFIED` (QUALIFIED + champion + wagering authorized), `QUALIFIED_NOT_WAGER_AUTHORIZED`, `RESEARCH_POSITIVE_EV`, `LEAN`, `PASS`, `EVALUATED_NO_ACTION`, `NOT_EVALUATED_BY_MODEL`, `UNSCORED`, `BLOCKED`, `QUOTE_NOT_OFFERED`. `original_tier`, `model_action` and `recorded_role` stay unchanged beside it.
 
 **Exports.** CSV = every row. Excel: `All rows` (every row), `Champion vs Challenger` (same quote side, releases side by side), `Positive EV view` (labelled view; never includes derived complements), `Provenance & Legend`. `new_vs_previous` ∈ NEW / UNCHANGED / PRICE_CHANGED / LINE_CHANGED / STATUS_CHANGED / NO_PREVIOUS_SHEET.
+
+**Sport implementations.** NFL: `gambling/betsheets/nfl.build_frozen_sheet` (archived boards); regression sheet `tests/fixtures/betsheets/NFL_20261110_072712CST_betsheet.csv`.
