@@ -96,3 +96,13 @@ repairs and without a chat history dependency.
 - [ ] Inventory and integrate post-November-11 model and bet-sheet changes from their actual source.
 
 This phase is structure and documentation only: no model promotion, recalibration, odds/pricing logic change, or wager settlement rewrite is authorized. The archived November 11 board is not necessarily the newest bet sheet.
+
+## Research-to-development handoff — documentation package
+
+- [x] Prepare a Claude Code-readable repository, model, bet-sheet, wagering/parlay/bonus and provenance brief in `docs/handoff/`.
+- [x] Link Claude and agent entry instructions to the handoff, with a reusable research change-request template and implementation-report workflow.
+- [ ] Complete five-sport latest-code/authoritative-release inventory, including out-of-repository files and uncommitted changes.
+- [ ] Implement first independently approved research decision with paired frozen replay, documented release ID and golden tests.
+- [ ] Build a continuously validated, all-rows chronological bet-sheet export per sport, then separate Streamlit UI integration.
+
+Historical provenance, immutable original score/authorization and unknown account data limits remain in force. Handoff docs are **not** certification that these features already work.
