@@ -1,0 +1,121 @@
+{
+  "fixture_id": "NBA_R4_20261112",
+  "sport": "NBA",
+  "slate": "2026-11-12 (4 games / 12 market rows)",
+  "release_ids": [
+    "NBA_R4_V27_20261030"
+  ],
+  "scorer_files": [
+    {
+      "location": "legacy_models/nba_r4/nba.py",
+      "sha256": "763ae48e734e5272a040466a3f09ab7fb63d75222351e8affe18c6466959be44",
+      "bytes": 5555
+    },
+    {
+      "location": "legacy_models/nba_r4/scoring_core.py",
+      "sha256": "774d6be233793179e86b8c818108ef0d2bdeb155d96eea0a2b0acde1d1c08864",
+      "bytes": 9302
+    },
+    {
+      "location": "legacy_models/nba_r4/portfolio_kelly.py",
+      "sha256": "09476d0eaa2d8a7435fe5db092bc69a5aff4f3a14e24e44520424cf742fe546a",
+      "bytes": 1483
+    },
+    {
+      "location": "legacy_models/nba_r4/dependence.py",
+      "sha256": "3130924b30d23352f6f0b5f6849f0718985867738d3aff828df6ea0d046e8483",
+      "bytes": 1841
+    },
+    {
+      "location": "legacy_models/nba_r4/ACTIVE_RELEASE.json",
+      "sha256": "fb66e35f0ea518c3f1bee44cae2bd10a235c6f8ef8f79542f6b19dc4ff0a6f4d",
+      "bytes": 1487
+    },
+    {
+      "location": "legacy_models/nba_r4/DEPENDENCE_MODEL.json",
+      "sha256": "54e75861eb9bb0de623063453c3a31ef9e59d84e06e40ed5619e6ccc63cab67b",
+      "bytes": 723
+    },
+    {
+      "location": "legacy_models/nba_r4/RELEASE_HASHES.json",
+      "sha256": "72aba7903aebc4d8595bcb4fb782f44505cf8b05d5cb2439f93d6b88fa8e558a",
+      "bytes": 837
+    },
+    {
+      "location": "legacy_models/nba_r4/data/v27_coefficients.json",
+      "sha256": "df214c5ce427f4d39a86afd2fa301f3498e5eef77617a55e9b9e7b37f8d04771",
+      "bytes": 20581
+    },
+    {
+      "location": "legacy_models/nba_r4/data/history.csv",
+      "sha256": "a603842931998dfcbbfad3dd22bf9705de6f2770a14a8158ef1b29c190dbf607",
+      "bytes": 1615763
+    },
+    {
+      "location": "legacy_models/nba_r4/data/previous_historical_master.csv",
+      "sha256": "f55989eca558908e6eb7d9075921a17a2fdc9853e0298a14c4b3c36353270485",
+      "bytes": 5794202
+    }
+  ],
+  "expected_rows": {
+    "forecasts.csv": 12
+  },
+  "provenance": "History through 2026-11-11 from the reproducibility package; Nov 6-11 finals were manually transcribed (bridge retained) and are accepted as frozen replay input only (research decision 5, PR #4). Quotes JSON produced by build_nba_daily_features.py from the Nov 12 capture. Oct 29 reference is a separate, unresolved pipeline (decision 1) and is not part of this fixture.",
+  "comparison": "forecasts.csv excluding Frozen_UTC (run timestamp)",
+  "environment": {
+    "python": "3.13.18",
+    "scikit-learn": "1.8.0",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "lock_file": "requirements-models.txt",
+    "verified_utc": "2026-11-25",
+    "also_passes": "NFL/NHL/NCAAFB/NBA also verified with numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1"
+  },
+  "inputs": [
+    {
+      "path": "inputs/2026-11-12_nba_quotes.json",
+      "sha256": "9dc344953e4f066e9767ca26a924b2e1160b02f8d2f7cdda55a38e955eb596ee",
+      "bytes": 846
+    },
+    {
+      "path": "inputs/build_nba_daily_features.py",
+      "sha256": "6d243940c85fa70a47af40d7a54fc7b4c32e887376277000e47ae3c719442630",
+      "bytes": 2244
+    },
+    {
+      "path": "inputs/nba_history_through_2026-11-11.csv",
+      "sha256": "29fb33308a2c51b8f4c951cae8a504bcc9c57c3aae895c20955463ea9e0561f3",
+      "bytes": 1680964
+    },
+    {
+      "path": "inputs/nov6_to_nov11_results_bridge.csv",
+      "sha256": "4a72884d528e0d13796c7da543abfb1a60157823511e58551bb12807d5ba96c9",
+      "bytes": 6893
+    }
+  ],
+  "expected": [
+    {
+      "path": "expected/OUTPUT_HASHES.json",
+      "sha256": "272cca093892be3e69a80fdc6bf79fc3589575db0557cce32faeee9480e45b43",
+      "bytes": 880
+    },
+    {
+      "path": "expected/forecasts.csv",
+      "sha256": "749f63b8913c73bc1ad5457036878581aa1dc445462a3848527cbdda86530d5e",
+      "bytes": 6663
+    },
+    {
+      "path": "expected/run_manifest.json",
+      "sha256": "04960257ea63d7dfe9d281ca729adf951eea96937ecf712032cdc7c65bde7668",
+      "bytes": 426
+    }
+  ],
+  "frozen_zip": {
+    "path": "data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip",
+    "sha256": "a6ab7b0a36a0bedf6c55a769396034208b1fc98fe83edf4e6ced00b81effa9e1"
+  },
+  "comparison_rule": "row count and column list equal; numeric |diff| <= 1e-9 with identical NaN positions; other columns equal as strings",
+  "model_changes": "NONE - unchanged archived scorer; no refit, recalibration, re-tier or promotion"
+}

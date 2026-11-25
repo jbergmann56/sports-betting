@@ -27,3 +27,20 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Frozen history audit
         run: python -m gambling audit
+
+  golden-replay:
+    # Runs the archived scorers unchanged against hashed fixtures in the pinned model
+    # environment. NCAABB_V4_20261101 needs the external reproducibility package and
+    # reports SKIPPED in CI unless GOLDEN_EXTERNAL_DIR is provided.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned model environment
+        run: python -m pip install -r requirements-models.txt
+      - name: Golden replay fixtures
+        run: python -m unittest tests.test_golden_replay -v

@@ -1,0 +1,9 @@
+{
+  "release": "NBA_PREVIOUS_PRODUCTION_R4_20261030",
+  "history_sha256": "29fb33308a2c51b8f4c951cae8a504bcc9c57c3aae895c20955463ea9e0561f3",
+  "history_last": "2026-11-11",
+  "quotes_sha256": "9dc344953e4f066e9767ca26a924b2e1160b02f8d2f7cdda55a38e955eb596ee",
+  "rows": 12,
+  "joint_model_status": "SHADOW_ADJUSTED_KELLY; conditional scenario model, not validated joint calibration",
+  "known_quote_limitations": "ACCEPTED"
+}

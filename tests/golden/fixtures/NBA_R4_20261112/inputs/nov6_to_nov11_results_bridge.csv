@@ -1,0 +1,48 @@
+game_key,date,season,away,home,away_score,home_score,source
+2026-11-06|Washington Wizards|Atlanta Hawks,2026-11-06,2026/2027,Washington Wizards,Atlanta Hawks,132,139,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Boston Celtics|Charlotte Hornets,2026-11-06,2026/2027,Boston Celtics,Charlotte Hornets,119,80,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Philadelphia 76ers|Cleveland Cavaliers,2026-11-06,2026/2027,Philadelphia 76ers,Cleveland Cavaliers,95,119,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Utah Jazz|Dallas Mavericks,2026-11-06,2026/2027,Utah Jazz,Dallas Mavericks,100,112,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Oklahoma City Thunder|Memphis Grizzlies,2026-11-06,2026/2027,Oklahoma City Thunder,Memphis Grizzlies,128,97,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Toronto Raptors|Milwaukee Bucks,2026-11-06,2026/2027,Toronto Raptors,Milwaukee Bucks,121,107,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Minnesota Timberwolves|New Orleans Pelicans,2026-11-06,2026/2027,Minnesota Timberwolves,New Orleans Pelicans,115,109,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|Portland Trail Blazers|Los Angeles Lakers,2026-11-06,2026/2027,Portland Trail Blazers,Los Angeles Lakers,118,124,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-06|San Antonio Spurs|Sacramento Kings,2026-11-06,2026/2027,San Antonio Spurs,Sacramento Kings,124,109,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|Denver Nuggets|Indiana Pacers,2026-11-07,2026/2027,Denver Nuggets,Indiana Pacers,114,102,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|Brooklyn Nets|Atlanta Hawks,2026-11-07,2026/2027,Brooklyn Nets,Atlanta Hawks,121,124,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|New York Knicks|Cleveland Cavaliers,2026-11-07,2026/2027,New York Knicks,Cleveland Cavaliers,109,97,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|Washington Wizards|Oklahoma City Thunder,2026-11-07,2026/2027,Washington Wizards,Oklahoma City Thunder,75,114,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|Orlando Magic|Golden State Warriors,2026-11-07,2026/2027,Orlando Magic,Golden State Warriors,119,126,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|Houston Rockets|Phoenix Suns,2026-11-07,2026/2027,Houston Rockets,Phoenix Suns,99,102,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-07|San Antonio Spurs|Portland Trail Blazers,2026-11-07,2026/2027,San Antonio Spurs,Portland Trail Blazers,125,103,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Philadelphia 76ers|Chicago Bulls,2026-11-08,2026/2027,Philadelphia 76ers,Chicago Bulls,127,121,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Los Angeles Lakers|Detroit Pistons,2026-11-08,2026/2027,Los Angeles Lakers,Detroit Pistons,121,116,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Utah Jazz|Minnesota Timberwolves,2026-11-08,2026/2027,Utah Jazz,Minnesota Timberwolves,100,115,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Brooklyn Nets|Dallas Mavericks,2026-11-08,2026/2027,Brooklyn Nets,Dallas Mavericks,93,130,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Boston Celtics|Milwaukee Bucks,2026-11-08,2026/2027,Boston Celtics,Milwaukee Bucks,117,97,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|Miami Heat|Sacramento Kings,2026-11-08,2026/2027,Miami Heat,Sacramento Kings,114,108,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-08|New Orleans Pelicans|Los Angeles Clippers,2026-11-08,2026/2027,New Orleans Pelicans,Los Angeles Clippers,123,139,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Los Angeles Lakers|Atlanta Hawks,2026-11-09,2026/2027,Los Angeles Lakers,Atlanta Hawks,124,114,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Cleveland Cavaliers|Charlotte Hornets,2026-11-09,2026/2027,Cleveland Cavaliers,Charlotte Hornets,112,124,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Washington Wizards|Detroit Pistons,2026-11-09,2026/2027,Washington Wizards,Detroit Pistons,111,122,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Memphis Grizzlies|Toronto Raptors,2026-11-09,2026/2027,Memphis Grizzlies,Toronto Raptors,118,102,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Indiana Pacers|Dallas Mavericks,2026-11-09,2026/2027,Indiana Pacers,Dallas Mavericks,122,125,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|Denver Nuggets|Houston Rockets,2026-11-09,2026/2027,Denver Nuggets,Houston Rockets,100,110,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|San Antonio Spurs|Phoenix Suns,2026-11-09,2026/2027,San Antonio Spurs,Phoenix Suns,122,96,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-09|New Orleans Pelicans|Golden State Warriors,2026-11-09,2026/2027,New Orleans Pelicans,Golden State Warriors,87,138,FROZEN_NOV11_SCRIPT_MANUAL_FINALS
+2026-11-10|Milwaukee Bucks|New York Knicks,2026-11-10,2026/2027,Milwaukee Bucks,New York Knicks,85,117,ARCHIVED_ESPN_20261110_FINALS
+2026-11-10|Boston Celtics|Philadelphia 76ers,2026-11-10,2026/2027,Boston Celtics,Philadelphia 76ers,123,101,ARCHIVED_ESPN_20261110_FINALS
+2026-11-10|LA Clippers|Phoenix Suns,2026-11-10,2026/2027,LA Clippers,Phoenix Suns,110,133,ARCHIVED_ESPN_20261110_FINALS
+2026-11-10|Miami Heat|Utah Jazz,2026-11-10,2026/2027,Miami Heat,Utah Jazz,115,109,ARCHIVED_ESPN_20261110_FINALS
+2026-11-10|Orlando Magic|Sacramento Kings,2026-11-10,2026/2027,Orlando Magic,Sacramento Kings,107,100,ARCHIVED_ESPN_20261110_FINALS
+2026-11-10|Oklahoma City Thunder|Portland Trail Blazers,2026-11-10,2026/2027,Oklahoma City Thunder,Portland Trail Blazers,103,123,ARCHIVED_ESPN_20261110_FINALS
+2026-11-11|Washington Wizards|Indiana Pacers,2026-11-11,2026/2027,Washington Wizards,Indiana Pacers,101,114,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Boston Celtics|Toronto Raptors,2026-11-11,2026/2027,Boston Celtics,Toronto Raptors,98,93,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Cleveland Cavaliers|New York Knicks,2026-11-11,2026/2027,Cleveland Cavaliers,New York Knicks,115,107,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|San Antonio Spurs|Chicago Bulls,2026-11-11,2026/2027,San Antonio Spurs,Chicago Bulls,124,119,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Denver Nuggets|Memphis Grizzlies,2026-11-11,2026/2027,Denver Nuggets,Memphis Grizzlies,123,118,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Los Angeles Lakers|Milwaukee Bucks,2026-11-11,2026/2027,Los Angeles Lakers,Milwaukee Bucks,123,112,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Brooklyn Nets|New Orleans Pelicans,2026-11-11,2026/2027,Brooklyn Nets,New Orleans Pelicans,145,111,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Orlando Magic|Utah Jazz,2026-11-11,2026/2027,Orlando Magic,Utah Jazz,123,108,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Golden State Warriors|Houston Rockets,2026-11-11,2026/2027,Golden State Warriors,Houston Rockets,108,115,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA
+2026-11-11|Oklahoma City Thunder|Portland Trail Blazers,2026-11-11,2026/2027,Oklahoma City Thunder,Portland Trail Blazers,108,118,2026-11-11_CROSS_VERIFIED_KP_SPORTS_AND_WHYNBA

@@ -1,0 +1,72 @@
+{
+  "fixture_id": "NHL_DAY0_20261112",
+  "sport": "NHL",
+  "slate": "2026-11-12 (capture 20261112T134056Z_68f7ec)",
+  "release_ids": [
+    "NHL_ML_DAY0_V1_20261025",
+    "NHL_PL_DAY0_V1_20261025",
+    "NHL_OU_DAY0_V1_20261025",
+    "NHL_ML_V3",
+    "NHL_PL_V1",
+    "NHL_V15_CONDITIONAL_COUNT"
+  ],
+  "scorer_files": [
+    {
+      "location": "legacy_models/nhl_day0/day0_production.py",
+      "sha256": "ae1f9c5bf3b26deb5b421a235c14bbb28a259429edfa198db422f05265107579",
+      "bytes": 17707
+    }
+  ],
+  "expected_rows": {
+    "nhl_scores_20261112.csv": 132
+  },
+  "provenance": "Controls rebuilt exactly (20,470 rows) from NHL_DAY0_CHAMPION_AUTHORITY_V13_PACKAGE.zip; adapter and quotes from the reproducibility package; expected = NHL rows of 20261112_all_model_scores.csv (source file retained alongside).",
+  "comparison": "NHL rows sorted by event_id, market, side, model_role, model_version",
+  "environment": {
+    "python": "3.13.18",
+    "scikit-learn": "1.8.0",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "lock_file": "requirements-models.txt",
+    "verified_utc": "2026-11-25",
+    "also_passes": "NFL/NHL/NCAAFB/NBA also verified with numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1",
+    "note": "stdlib only"
+  },
+  "inputs": [
+    {
+      "path": "inputs/20261112_quotes.csv",
+      "sha256": "e26bb3286884d680b8b66880313e7c48fe02b5dd05cca77744ebc687a578381d",
+      "bytes": 167687
+    },
+    {
+      "path": "inputs/OBSERVED_PRICE_ALL_CONTROLS.csv",
+      "sha256": "4b6119a04f2b4129b4fda4e3511d5c5b3dc9b083ed5368cf2d52c42a28be8b15",
+      "bytes": 2691522
+    },
+    {
+      "path": "inputs/nhl_score_adapter_ORIGINAL.py",
+      "sha256": "3a52e46266402d31e19ddf5273c478c009b4a2624133152f5b2340921eee1478",
+      "bytes": 3795
+    }
+  ],
+  "expected": [
+    {
+      "path": "expected/20261112_all_model_scores_SOURCE.csv",
+      "sha256": "b6e7393f7419174f4b9124c8b5c1624a769792f1b4a7ac92d8e2c5a6a05dd0a2",
+      "bytes": 170596
+    },
+    {
+      "path": "expected/nhl_scores_20261112.csv",
+      "sha256": "b2ebfc90da4090c74a54a4577bc92e4700b6a5302810bc11842ffacf0c658eec",
+      "bytes": 65635
+    }
+  ],
+  "frozen_zip": {
+    "path": "data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip",
+    "sha256": "a6ab7b0a36a0bedf6c55a769396034208b1fc98fe83edf4e6ced00b81effa9e1"
+  },
+  "comparison_rule": "row count and column list equal; numeric |diff| <= 1e-9 with identical NaN positions; other columns equal as strings",
+  "model_changes": "NONE - unchanged archived scorer; no refit, recalibration, re-tier or promotion"
+}

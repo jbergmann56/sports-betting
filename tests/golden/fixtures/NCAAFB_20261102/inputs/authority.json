@@ -1,0 +1,87 @@
+{
+  "ModelVersion": "NCAAFB-W8PLUS-SPREAD-PARTIAL-POOLING-V2-20261028",
+  "Status": "ACTIVE USER-APPROVED PROVISIONAL SCORING CALIBRATION",
+  "AuthorizedBy": "User: I am good with this adjustment - implement",
+  "EffectiveLocalDate": "2026-10-28",
+  "Scope": "NCAAFB regular-season FBS-versus-FBS Weeks8+ spread markets; existing input feature construction unchanged",
+  "Model": "mu ~ Beta(25,25); p_group | mu ~ Beta(50*mu,50*(1-mu)); Bernoulli qualifying spread outcomes",
+  "TrainingPopulation": "2023\u201325 frozen41 + four pregame-eligible Week8 2026 contracts;45decisive,25W20L",
+  "Eligibility": "Higher-slope team is underdog and abs(Z)>=1.243; offered-price EV must be positive",
+  "Groups": {
+    "Moderate": "1.243<=abs(Z)<1.75",
+    "Strong": "abs(Z)>=1.75"
+  },
+  "Calibration": [
+    {
+      "Group": "Moderate",
+      "N": 31,
+      "W": 14,
+      "L": 17,
+      "Push": 0,
+      "ModelP": 0.4987879548238005,
+      "PreviousModelP": 0.5298116050185977
+    },
+    {
+      "Group": "Strong",
+      "N": 14,
+      "W": 11,
+      "L": 3,
+      "Push": 0,
+      "ModelP": 0.5844035053238725,
+      "PreviousModelP": 0.6083381776420733
+    }
+  ],
+  "Hierarchy": {
+    "A": "No spread TierA promoted",
+    "B+": "Strong qualifying positive-EV signals; provisional",
+    "B": "Moderate qualifying positive-EV signals; provisional",
+    "Lean": "Existing independently supported research regimes remain separate",
+    "Pass": "Outside supported signal or nonpositive EV"
+  },
+  "Health": "Watch / provisional; user-approved adoption does not create independent validation",
+  "Challenger": "Former continuous slope posterior; retained frozen; never blended silently",
+  "FullKelly": "max(0,(p*(1+b)-1)/b)",
+  "AdjustedKelly": "Joint expected-log optimizer integrates shared mu and group Beta probabilities analytically; no second N_eff multiplier; no arbitrary fractional Kelly or family cap",
+  "UncertaintyIncluded": [
+    "Between-group partial pooling",
+    "Within-group posterior uncertainty",
+    "Shared hyperparameter uncertainty",
+    "Cross-game dependence induced by shared group probabilities"
+  ],
+  "UncertaintyNotIncluded": [
+    "Model-family selection uncertainty beyond adopting this specification",
+    "Season-specific random effects not fitted",
+    "Additional empirical game correlations not fitted"
+  ],
+  "FixedReplayAssumptions": [
+    "User-selected $1000 total sizing bankroll includes existing committed stakes",
+    "Nine observed NCAA positions through Oct26 cutoff; later changes unknown",
+    "Latest supplied odds retained; no live refresh",
+    "Conditional decisive settlements; push estimates remain research-only",
+    "Fixed ML +0.10 rule retained; exact historical population unresolved"
+  ],
+  "ML": "Existing ModelP+0.10 fixed uplift retained; exact parameter uncertainty not recoverable; no fabricated SE",
+  "OU": "Research Lean remains visible; zero allocation",
+  "Supersedes": "Partial-pooling V1 calibration through2025; frozen baseline and continuous challenger preserved",
+  "FutureScoring": "Use posterior_nodes.csv and group probabilities from this authority; retain absZ1.243/1.75 boundaries, update pregame rating/slope inputs normally; explicit versioned decision required to refit calibration",
+  "LocalScoringPackage": "outputs/model_updates_oct28",
+  "UpdatedBy": "Execute eight-step model/Kelly update plan; likelihood/prior/group boundaries unchanged",
+  "CalibrationAdmission": "Pregame model artifact timestamp precedes kickoff; higher-slope underdog |Z|>=1.243; include price-filtered Pass signals because historical calibration used all signal-eligible contracts",
+  "ProspectiveValidationCaveat": "These forecasts were frozen before games under continuous calibration; partial pooling adopted after outcomes. Treat as sequential calibration evidence, not untouched validation of the chosen partial-pooling family.",
+  "PushTreatment": "Engine supports win/push/loss; pooled and exact-line estimates research-only; no active whole-spread allocations",
+  "ExposureTreatment": "Joint incremental Kelly includes nine observed NCAA tickets, $231 fixed risk; later exposure unknown; additions not executed",
+  "LatestScoringPackage": "outputs/refresh_oct31",
+  "LatestQuoteRefreshLocalDate": "2026-10-31",
+  "LatestSizingBasis": "CONDITIONAL NO-PUSH SCENARIO; user-selected total bankroll $1000; seven recorded Saturday tickets $211 held unchanged; prior proposed additions not assumed executed; excludes exact Cincinnati loss-by-7; later activity and Friday financial settlements unknown",
+  "LatestSizingNotVerifiedTransactions": false,
+  "ObservedExposureCutoffUTC": "2026-10-27T00:33:59.301000+00:00",
+  "ObservedNCAAStakeUSD": 231,
+  "SizingStatus": "Conditional no-push scenario, not fully reconciled current account sizing",
+  "SizingBankrollUSD": 1000,
+  "BankrollSource": "Explicit user instruction: use $1000 for dollar sizing",
+  "AdditionalRecommendedStakeUSD": null,
+  "ResultingNCAAStakeUSD": null,
+  "ConditionalScenarioAdditionalStakeUSD": 170.8,
+  "ConditionalScenarioResultingStakeUSD": 381.8,
+  "ObservedUpcomingNCAAStakeUSD": 211
+}

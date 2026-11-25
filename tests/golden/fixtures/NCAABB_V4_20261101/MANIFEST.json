@@ -1,0 +1,126 @@
+{
+  "fixture_id": "NCAABB_V4_20261101",
+  "sport": "NCAABB",
+  "slate": "2026-11-01 (13 games / 35 market rows)",
+  "release_ids": [
+    "NCAABB_V4_PROD_THROUGH2025"
+  ],
+  "scorer_files": [
+    {
+      "location": "legacy_models/ncaabb_v4/ncaabb_models.py",
+      "sha256": "395ba5661fda866c0792ef72c657a57ef85adafbe4af8abf777e863be494b304",
+      "bytes": 21063
+    },
+    {
+      "location": "legacy_models/ncaabb_v4/ncaabb_matchup.py",
+      "sha256": "6468a97b1506f6f2f314c69753a15a9e7f815bf4496b49c3517fdaa5954b11f4",
+      "bytes": 19213
+    },
+    {
+      "location": "legacy_models/ncaabb_v4/score_ncaabb_v4.py",
+      "sha256": "ccc093550cbd87f73fcb3e5bb766811298295e9e506a032f0d75215b5bda60af",
+      "bytes": 4120
+    },
+    {
+      "location": "legacy_models/ncaabb_v4/NCAABB_V4_PRODUCTION_CANDIDATE.joblib",
+      "sha256": "0f5f198fdc448755fd4dd0be48e32434097d14635aa9b868f093d1c402e4fd90",
+      "bytes": 1402392
+    }
+  ],
+  "external_inputs": [
+    {
+      "package_path": "NCAABB/basketball_audit/v4/NCAABB_DB_CLEAN_REBUILT_2021_2025.csv",
+      "stage_path": "basketball_audit/v4/NCAABB_DB_CLEAN_REBUILT_2021_2025.csv",
+      "sha256": "9d2e77c0ebf2815c3a2b073f1959e1d5372b043e47c36c0b5793d111100bf179",
+      "bytes": 51585899,
+      "reason_not_committed": "51.6 MB; contains user-observation flags (actual_bet_status); public repository"
+    },
+    {
+      "package_path": "NCAABB/nov01_v4_inputs/mbb_schedule_2026.csv",
+      "stage_path": "nov01_v4_inputs/mbb_schedule_2026.csv",
+      "sha256": "4d3a8671fe8cfd2c4d4c2faaff4d70460afc4b55880e89d3d9bb8a4797639ac6",
+      "bytes": 29557108,
+      "reason_not_committed": "29.6 MB public SportsDataverse release; size"
+    }
+  ],
+  "external_package": {
+    "name": "GAMBLING_DAILY_FEATURE_SOURCE_REPRO_20261112.zip",
+    "sha256": "77d7637777806501e8bf47b62003e7d48864d85bf0a4cd63ee5e23287f2ac46a",
+    "bytes": 18786561,
+    "note": "User-supplied Feature Source & Reproducibility package; not committed (public repository)."
+  },
+  "expected_rows": {
+    "prior_2026_ratings.csv": 365,
+    "V4_scoring_inputs.csv": 13,
+    "V4_scored_markets.csv": 35
+  },
+  "provenance": "Full rebuild from raw sources via the original prepare_and_score.py wrapper, which restores the recorded capture time (2026-11-01T20:34:07.379540Z) before scoring.",
+  "comparison": "prior_2026_ratings.csv, V4_scoring_inputs.csv, V4_scored_markets.csv",
+  "environment": {
+    "python": "3.13.18",
+    "scikit-learn": "1.8.0",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "lock_file": "requirements-models.txt",
+    "verified_utc": "2026-11-25",
+    "also_passes": "NFL/NHL/NCAAFB/NBA also verified with numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1",
+    "note": "Binary pickled with scikit-learn 1.8.0; 1.9.1 fails (ModuleNotFoundError: _loss). Pin is mandatory."
+  },
+  "inputs": [
+    {
+      "path": "inputs/bovada_raw.json",
+      "sha256": "3e6a5de9393accd35c24d8c32d9e40f4bf15007c3cfef76ff0c391031865b892",
+      "bytes": 52669
+    },
+    {
+      "path": "inputs/espn_20261101.json",
+      "sha256": "58dce6bfe25da3bd6a2bcc105b1cf6b354f78721db805056872b0fa166c74139",
+      "bytes": 29579
+    },
+    {
+      "path": "inputs/espn_20261102.json",
+      "sha256": "31d2408f4f4bda80702de89a55ecdd35c443d5e55ff7459d4190362c0acc35ca",
+      "bytes": 1779885
+    },
+    {
+      "path": "inputs/manifest.json",
+      "sha256": "faa165ae5d1c972d038c70b2cce547f0a7006f92a4380aa03a5e1305622a0465",
+      "bytes": 993
+    },
+    {
+      "path": "inputs/prepare_and_score.py",
+      "sha256": "47a789b9e91139345926efe5ee6afd2329a1afee27bf5a10fc06792697cfe5f9",
+      "bytes": 10325
+    },
+    {
+      "path": "inputs/rebuild_nov01_offline.py",
+      "sha256": "73744138dc712d69815f89c556212cac98de6d499baf715f84b8302f20b08390",
+      "bytes": 698
+    }
+  ],
+  "expected": [
+    {
+      "path": "expected/V4_scored_markets.csv",
+      "sha256": "a6094e9a301f7e8ed6500e2454d28014fcf6cbea9f173687207d3456ad2a0b19",
+      "bytes": 31399
+    },
+    {
+      "path": "expected/V4_scoring_inputs.csv",
+      "sha256": "14a5e4dd8ed74a0df88c8111b26d133adf0dcf6efcf74312893055dd78409899",
+      "bytes": 12247
+    },
+    {
+      "path": "expected/prior_2026_ratings.csv",
+      "sha256": "e1e3cc4dbef8a08b30154e0d68069df1a3ea9966854ecd9808e00889acb16efa",
+      "bytes": 61041
+    }
+  ],
+  "frozen_zip": {
+    "path": "data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip",
+    "sha256": "a6ab7b0a36a0bedf6c55a769396034208b1fc98fe83edf4e6ced00b81effa9e1"
+  },
+  "comparison_rule": "row count and column list equal; numeric |diff| <= 1e-9 with identical NaN positions; other columns equal as strings",
+  "model_changes": "NONE - unchanged archived scorer; no refit, recalibration, re-tier or promotion"
+}

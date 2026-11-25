@@ -1,0 +1,18 @@
+{
+  "endpoint": "https://www.bovada.lv/services/sports/event/v2/events/A/description/basketball/college-basketball",
+  "captured_utc": "2026-11-01T20:34:07.379540+00:00",
+  "events": 14,
+  "ready": 13,
+  "blocked": 1,
+  "model": "Authoritative V4 through-2025 production bundle; no model refit",
+  "rating_source": "Original V1 reconstruction algorithm extended to completed 2026 SportsDataverse/ESPN D1 games",
+  "rating_2026_final_games": 5752,
+  "rating_2025_reproduction_max_abs_error": 3.552713678800501e-15,
+  "rating_prior_weight": 5,
+  "baseline_2026": 74.7172287899861,
+  "rating_source_url": "https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_mens_college_basketball_schedules/mbb_schedule_2026.csv",
+  "model_sha256": "0f5f198fdc448755fd4dd0be48e32434097d14635aa9b868f093d1c402e4fd90",
+  "sizing": "Original V4 evidence-factor Adjusted Kelly; not joint portfolio Kelly",
+  "bankroll": "Unspecified; report fractions only",
+  "cash_wagers_submitted": 0
+}
