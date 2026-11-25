@@ -126,7 +126,7 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [x] B2–B3: pinned model environment (`requirements-models.txt`, scikit-learn 1.8.0) and golden replay harness with five hashed fixtures (`docs/golden-fixtures.md`); all five PASS in the pinned environment; CI `golden-replay` job added (NCAABB skips without external inputs).
 - [ ] B1: external-input storage — superseded by the model-input database design (`docs/model-data/`).
 - [ ] B4: readiness CLI.
-- [ ] B5–B7: `ScoreRow` v2, shared scoring, all-rows bet-sheet writer.
+- [x] B5–B7: adapter contract v2 (conditional probabilities, push states, NOT_EVALUATED_BY_MODEL, labelled complements per PR #4 decisions 3–4), push-aware EV/Full Kelly, Adjusted Kelly pass-through with method/certification, all-rows chronological CSV + Excel bet sheets (`tests/test_scoring_v2.py`, 22 tests).
 - [ ] Sport adapters in order NFL → NHL → NCAAFB → NBA → NCAABB, each with golden parity.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
