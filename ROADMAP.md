@@ -139,3 +139,12 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
 No model was refit, re-tiered or promoted; no wager authorization changed.
+
+## Model-input database (MySQL) — 2026-11-25
+
+- [x] M0: schema v0001 (`gambling/modeldata/schema`), importer for CSV/CSV.gz/Parquet/JSON/blob and frozen replay artifacts, time-safe retrieval, run pins, account/wager column guard, CLI; proof that all five golden fixtures replay identically from inputs materialized from MySQL 8.0.46 and from SQLite (`docs/model-data/README.md`).
+- [ ] M1: provision `gambling_model_data` on the existing Azure MySQL server (parameters, users, TLS).
+- [ ] M2: golden import and proof on Azure.
+- [ ] M3: read-only import of capture history, ESPN finals and recovered feature inputs.
+- [ ] M4: dual-run period (SQLite remains authoritative).
+- [ ] M5: independent validation and recorded authority decision.

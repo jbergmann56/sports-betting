@@ -12,6 +12,7 @@ requires-python = ">=3.11"
 # Legacy scorer / golden replay environment; exact lock in requirements-models.txt.
 models = ["scikit-learn==1.8.0", "numpy==2.5.5", "pandas==3.1.1", "scipy==1.18.1", "joblib==1.6.0", "openpyxl>=3.1"]
 mysql = ["PyMySQL>=1.1"]
+parquet = ["pyarrow>=15"]
 
 [project.scripts]
 gambling-research = "gambling.cli:main"
@@ -21,3 +22,4 @@ include = ["gambling*"]
 
 [tool.setuptools.package-data]
 "gambling.db" = ["migrations/*.sql"]
+"gambling.modeldata" = ["schema/mysql/*.sql", "schema/sqlite/*.sql"]

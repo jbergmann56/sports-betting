@@ -6,3 +6,4 @@ tests/fixtures/** -text
 gambling/db/migrations/*.sql -text
 tests/golden/fixtures/** -text
 tests/fixtures/betsheets/** -text
+gambling/modeldata/schema/** -text

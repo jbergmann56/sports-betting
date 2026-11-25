@@ -56,14 +56,22 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def load_manifest(fixture_id: str) -> dict:
-    return json.loads((FIXTURES_DIR / fixture_id / "MANIFEST.json").read_text(encoding="utf-8"))
+@dataclass(frozen=True)
+class Ctx:
+    """Where fixture inputs come from. Defaults are the committed repo fixtures; the model-data
+    proof points these at files materialized from the database instead."""
+    fixtures_dir: Path = FIXTURES_DIR
+    frozen_zip: Path = FROZEN_ZIP
 
 
-def verify_hashes(manifest: dict, external_dir: Path | None) -> list[str]:
+def load_manifest(fixture_id: str, fixtures_dir: Path = FIXTURES_DIR) -> dict:
+    return json.loads((fixtures_dir / fixture_id / "MANIFEST.json").read_text(encoding="utf-8"))
+
+
+def verify_hashes(manifest: dict, external_dir: Path | None, ctx: Ctx = Ctx()) -> list[str]:
     """Return a list of problems; empty list means every pinned file matches."""
     problems: list[str] = []
-    fixture = FIXTURES_DIR / manifest["fixture_id"]
+    fixture = ctx.fixtures_dir / manifest["fixture_id"]
     for group in ("inputs", "expected"):
         for entry in manifest.get(group, []):
             p = fixture / entry["path"]
@@ -189,10 +197,12 @@ def _run(cmd: list[str], cwd: Path) -> None:
 # --------------------------------------------------------------------------- stages
 
 
-def run_nfl(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]:
+def run_nfl(manifest: dict, work: Path, external_dir: Path | None, ctx: Ctx) -> list[dict]:
     _require("pandas", "numpy", "scipy")
     prefix = manifest["frozen_zip_prefix"]
-    with zipfile.ZipFile(FROZEN_ZIP) as z:
+    if sha256(ctx.frozen_zip) != manifest["frozen_zip"]["sha256"]:
+        raise RuntimeError("frozen ZIP sha256 does not match the fixture manifest")
+    with zipfile.ZipFile(ctx.frozen_zip) as z:
         for name in z.namelist():
             if name.startswith(prefix):
                 z.extract(name, work)
@@ -211,9 +221,9 @@ def run_nfl(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]
             for n in ("dual_model_bet_sheet.csv", "both_side_inputs.csv", "team_features.csv")]
 
 
-def run_nhl(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]:
+def run_nhl(manifest: dict, work: Path, external_dir: Path | None, ctx: Ctx) -> list[dict]:
     _require("pandas", "numpy")  # scorer is stdlib-only; the comparison uses pandas
-    fx = FIXTURES_DIR / manifest["fixture_id"]
+    fx = ctx.fixtures_dir / manifest["fixture_id"]
     pkg = work / "models" / "nhl_day0"
     pkg.mkdir(parents=True)
     (work / "models" / "__init__.py").write_text("")
@@ -239,9 +249,9 @@ def run_nhl(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]
                              produced_columns_only=True))]
 
 
-def run_ncaafb(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]:
+def run_ncaafb(manifest: dict, work: Path, external_dir: Path | None, ctx: Ctx) -> list[dict]:
     _require("pandas", "numpy", "scipy")
-    fx = FIXTURES_DIR / manifest["fixture_id"]
+    fx = ctx.fixtures_dir / manifest["fixture_id"]
     shutil.copytree(fx / "inputs", work / "inputs")
     (work / "results").mkdir()
     shutil.move(str(work / "inputs/oct27_scoreboard.json"), work / "results/oct27_scoreboard.json")
@@ -255,9 +265,9 @@ def run_ncaafb(manifest: dict, work: Path, external_dir: Path | None) -> list[di
             for e in manifest["expected"] if e["path"].endswith(".csv")]
 
 
-def run_nba(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]:
+def run_nba(manifest: dict, work: Path, external_dir: Path | None, ctx: Ctx) -> list[dict]:
     _require("pandas", "numpy", "scipy")
-    fx = FIXTURES_DIR / manifest["fixture_id"]
+    fx = ctx.fixtures_dir / manifest["fixture_id"]
     shutil.copytree(REPO / "legacy_models/nba_r4", work / "nba_r4")
     out = work / "out"
     _run([sys.executable, "-B", str(work / "nba_r4/nba.py"), "score",
@@ -268,11 +278,11 @@ def run_nba(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]
                  **compare_csv(out / "forecasts.csv", fx / "expected/forecasts.csv", exclude=("Frozen_UTC",)))]
 
 
-def run_ncaabb(manifest: dict, work: Path, external_dir: Path | None) -> list[dict]:
+def run_ncaabb(manifest: dict, work: Path, external_dir: Path | None, ctx: Ctx) -> list[dict]:
     _require("pandas", "numpy", "joblib")
     _require_sklearn(manifest["environment"]["scikit-learn"])
     ext = _external(manifest, external_dir)
-    fx = FIXTURES_DIR / manifest["fixture_id"]
+    fx = ctx.fixtures_dir / manifest["fixture_id"]
     root = work / "nov01_v4_inputs"
     v4 = work / "basketball_audit" / "v4"
     (v4 / "code").mkdir(parents=True)
@@ -292,7 +302,7 @@ def run_ncaabb(manifest: dict, work: Path, external_dir: Path | None) -> list[di
             for n in ("prior_2026_ratings.csv", "V4_scoring_inputs.csv", "V4_scored_markets.csv")]
 
 
-RUNNERS: dict[str, Callable[[dict, Path, Path | None], list[dict]]] = {
+RUNNERS: dict[str, Callable[[dict, Path, Path | None, Ctx], list[dict]]] = {
     "NFL_20261110_072712CST": run_nfl,
     "NHL_DAY0_20261112": run_nhl,
     "NCAAFB_20261102": run_ncaafb,
@@ -301,18 +311,18 @@ RUNNERS: dict[str, Callable[[dict, Path, Path | None], list[dict]]] = {
 }
 
 
-def replay(fixture_id: str, external_dir: Path | None = None) -> dict:
-    manifest = load_manifest(fixture_id)
+def replay(fixture_id: str, external_dir: Path | None = None, ctx: Ctx = Ctx()) -> dict:
+    manifest = load_manifest(fixture_id, ctx.fixtures_dir)
     report = {"fixture_id": fixture_id, "release_ids": manifest["release_ids"]}
     try:
         if manifest.get("external_inputs") and external_dir is None:
             _external(manifest, external_dir)
-        problems = verify_hashes(manifest, external_dir)
+        problems = verify_hashes(manifest, external_dir, ctx)
         if problems:
             report.update(status="FAILED", reason="; ".join(problems))
             return report
         with tempfile.TemporaryDirectory(prefix=f"golden_{fixture_id}_") as tmp:
-            outputs = RUNNERS[fixture_id](manifest, Path(tmp), external_dir)
+            outputs = RUNNERS[fixture_id](manifest, Path(tmp), external_dir, ctx)
         report["outputs"] = outputs
         report["status"] = "PASSED" if all(o["status"] == "IDENTICAL" for o in outputs) else "FAILED"
     except Skip as why:
