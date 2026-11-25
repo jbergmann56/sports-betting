@@ -10,7 +10,7 @@ which path.
 directory and executes the golden replay harness against those files. The scorers are
 unchanged; a PASS proves the database returns the exact inputs the original runs used.
 
-    python -m gambling.modeldata.golden --url mysql://... --external /path/to/package
+    python -m gambling.modeldata.golden --db data/gambling.sqlite --external /path/to/package
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 from gambling.config import PACKAGE_ROOT
-from gambling.modeldata.store import Store, connect, parser_for
+from gambling.modeldata.store import Store, open_store, parser_for
 
 FIXTURES = PACKAGE_ROOT / "tests" / "golden" / "fixtures"
 FROZEN_ZIP = PACKAGE_ROOT / "data" / "GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip"
@@ -57,7 +57,8 @@ def import_golden(store: Store, external_dir: Optional[Path] = None) -> dict:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         fid = manifest["fixture_id"]
         store.register_run(fid, "GOLDEN_FIXTURE", manifest["release_ids"], manifest["environment"],
-                           manifest.get("scorer_files", []), notes=manifest.get("provenance"))
+                           manifest.get("scorer_files", []), notes=manifest.get("provenance"),
+                           sport=manifest.get("sport"))
         m_sha = store.register_source(manifest_path.read_bytes(), f"{fid}/MANIFEST.json", "MODEL_INTERNAL",
                                       f"repo tests/golden/fixtures/{fid}/MANIFEST.json", ACTOR)
         store.pin_input(fid, f"fixtures/{fid}/MANIFEST.json", "MANIFEST", m_sha)
@@ -107,7 +108,7 @@ def import_golden(store: Store, external_dir: Optional[Path] = None) -> dict:
             summary["versions"] += 1
             count += 1
         summary["fixtures"][fid] = count
-    summary["sources"] = int(store.fetchone("SELECT COUNT(*) FROM source_files")[0])
+    summary["sources"] = int(store.fetchone("SELECT COUNT(*) FROM md_source_files")[0])
     return summary
 
 
@@ -118,7 +119,7 @@ def prove_golden(store: Store, fixtures: Optional[list[str]] = None) -> list[dic
     reports = []
     with tempfile.TemporaryDirectory(prefix="modeldata_proof_") as tmp:
         root = Path(tmp)
-        runs = [r[0] for r in store.fetchall("SELECT run_id FROM model_runs WHERE run_kind = 'GOLDEN_FIXTURE' "
+        runs = [r[0] for r in store.fetchall("SELECT run_id FROM md_model_runs WHERE run_kind = 'GOLDEN_FIXTURE' "
                                              "ORDER BY run_id")]
         for run_id in runs:
             if fixtures and run_id not in fixtures:
@@ -137,15 +138,16 @@ def prove_golden(store: Store, fixtures: Optional[list[str]] = None) -> list[dic
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Import golden fixtures into the model-data store and prove replay.")
-    ap.add_argument("--url", default=os.environ.get("GAMBLING_MODELDATA_URL"), required=False)
+    ap = argparse.ArgumentParser(description="Import golden fixtures into the model-input store and prove replay.")
+    ap.add_argument("--db", default=os.environ.get("GAMBLING_DB"),
+                    help="SQLite file; normally a COPY of data/gambling.sqlite (default $GAMBLING_DB)")
     ap.add_argument("--external", default=os.environ.get("GOLDEN_EXTERNAL_DIR"))
     ap.add_argument("--skip-import", action="store_true")
     args = ap.parse_args(argv)
-    if not args.url:
-        ap.error("--url or GAMBLING_MODELDATA_URL is required")
-    store = connect(args.url)
-    out = {"backend": store.dialect, "python": platform.python_version(), "migrated": store.migrate()}
+    if not args.db:
+        ap.error("--db or GAMBLING_DB is required")
+    store = open_store(args.db, migrate=False)
+    out = {"database": str(args.db), "python": platform.python_version(), "migrated": store.migrate()}
     if not args.skip_import:
         out["import"] = import_golden(store, Path(args.external) if args.external else None)
     reports = prove_golden(store)

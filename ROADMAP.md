@@ -140,11 +140,12 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 
 No model was refit, re-tiered or promoted; no wager authorization changed.
 
-## Model-input database (MySQL) — 2026-11-25
+## Model-input store (SQLite) — 2026-11-25
 
-- [x] M0: schema v0001 (`gambling/modeldata/schema`), importer for CSV/CSV.gz/Parquet/JSON/blob and frozen replay artifacts, time-safe retrieval, run pins, account/wager column guard, CLI; proof that all five golden fixtures replay identically from inputs materialized from MySQL 8.0.46 and from SQLite (`docs/model-data/README.md`).
-- [ ] M1: provision `gambling_model_data` on the existing Azure MySQL server (parameters, users, TLS).
-- [ ] M2: golden import and proof on Azure.
-- [ ] M3: read-only import of capture history, ESPN finals and recovered feature inputs.
-- [ ] M4: dual-run period (SQLite remains authoritative).
-- [ ] M5: independent validation and recorded authority decision.
+MySQL/Azure dropped by user decision ("we are using sqlite in the project").
+
+- [x] M0: migration `0006_model_data` in `gambling/db/migrations`, applied by the existing migrator into `data/gambling.sqlite`. `md_*` tables reuse `model_releases` (no second registry), link runs to `capture_batches` / `quote_cohorts` / `model_scores`, carry `game_key` on rows. Importer for CSV/CSV.gz/Parquet/JSON/blob, time-safe retrieval, run pins, account/wager column guard, snapshot with SHA-256, CLI. All five golden fixtures replay identically from inputs materialized from a copy of the history database; the 19 pre-existing tables are byte-for-byte unchanged (`docs/model-data/README.md`).
+- [ ] M1: apply 0006 to a copy of the user's real `data/gambling.sqlite` (32 batches / 10,158 quotes / 10,173 scores), verify counts and hashes, then to the live file after a verified offline backup.
+- [ ] M2: read-only import of capture history, ESPN finals and recovered feature inputs, keyed by `game_key`.
+- [ ] M3: dual-run period: frozen outputs remain authoritative.
+- [ ] M4: independent validation and recorded authority decision.

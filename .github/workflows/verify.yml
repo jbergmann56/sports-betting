@@ -45,29 +45,17 @@ jobs:
       - name: Golden replay fixtures
         run: python -m unittest tests.test_golden_replay -v
 
-  modeldata-mysql:
-    # Model-input database contract and golden-from-database proof on MySQL 8.
+  modeldata:
+    # Model-input store (migration 0006 in the rolling SQLite history) and golden-from-database proof.
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: ci-only
-          MYSQL_DATABASE: gambling_model_data_test
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only"
-          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install pinned model environment and MySQL driver
-        run: python -m pip install -r requirements-models.txt PyMySQL pyarrow
-      - name: Model-data tests (SQLite + MySQL) and golden-from-database proof
-        env:
-          GAMBLING_MODELDATA_TEST_URL: mysql://root:ci-only@127.0.0.1:3306/gambling_model_data_test
+      - name: Install pinned model environment
+        run: python -m pip install -r requirements-models.txt pyarrow
+      - name: Model-data tests and golden-from-database proof
         run: python -m unittest tests.test_modeldata -v

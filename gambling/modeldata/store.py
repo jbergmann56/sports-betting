@@ -1,14 +1,14 @@
-"""Versioned, append-only model-input store (MySQL in production, SQLite for CI/offline).
+"""Versioned, append-only model-input store inside the rolling history SQLite database.
 
-Every source file is kept byte-for-byte (chunked BLOBs keyed by SHA-256), every
-parsed dataset is an immutable version with a column catalog, lossless rows and a
-content hash, and every reproducible run pins the exact files it used.
+The tables are created by ``gambling/db/migrations/0006_model_data.sql`` and applied by
+the same migrator as the rest of ``data/gambling.sqlite``. They build on the existing
+data model: runs reference ``model_releases`` (no second registry), can point at the
+``capture_batches`` / ``quote_cohorts`` they scored and the ``model_scores`` they
+reproduce, and dataset rows can carry the existing ``game_key``.
 
-Connection URLs (``GAMBLING_MODELDATA_URL``):
-
-* ``sqlite:///absolute/path.sqlite`` or ``sqlite:///:memory:``
-* ``mysql://user:password@host:3306/gambling_model_data?ssl_ca=/path/DigiCertGlobalRootCA.crt.pem``
-  (Azure Database for MySQL requires TLS; PyMySQL is the driver, ``pip install -e .[mysql]``).
+Every source file is kept byte-for-byte (chunked BLOBs keyed by SHA-256), every parsed
+dataset is an immutable version with a column catalog, lossless rows and a content hash,
+and every reproducible run pins the exact files it used.
 
 This store never holds sportsbook wagers, tickets, balances or account data:
 ``guard_columns`` rejects account/wager exports outright and requires an explicit
@@ -27,10 +27,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
-from urllib.parse import parse_qs, unquote, urlparse
+from contextlib import contextmanager
 
 SCHEMA_DIR = Path(__file__).resolve().parent / "schema"
-CHUNK = 1 << 20  # 1 MiB; well under MySQL's default 64 MiB max_allowed_packet
+CHUNK = 1 << 20  # 1 MiB
 SENSITIVITIES = ("PUBLIC_MARKET", "MODEL_INTERNAL", "CONTAINS_USER_OBSERVATION_FLAGS")
 IMPORT_TOOL = "gambling.modeldata.store/1"
 
@@ -66,7 +66,7 @@ def guard_columns(columns: Sequence[str], sensitivity: str,
     account = [c for c in columns if ACCOUNT_EXPORT.search(c)]
     if account:
         raise ModelDataError(f"columns {account[:5]} indicate a sportsbook account/wager export; such data belongs "
-                             "in the separate accounts database, not gambling_model_data")
+                             "in the separate accounts database, not the model-input store")
     flags: list[Optional[str]] = []
     for c in columns:
         if not USER_FLAG.search(c):
@@ -136,68 +136,53 @@ def media_type_for(name: str) -> str:
 
 @dataclass
 class Store:
-    con: Any
-    dialect: str  # "mysql" | "sqlite"
-
-    # ------------------------------------------------------------------ plumbing
-    @property
-    def ph(self) -> str:
-        return "%s" if self.dialect == "mysql" else "?"
-
-    def q(self, sql: str) -> str:
-        return sql.replace("?", self.ph)
+    """Model-input store over a connection from :func:`gambling.db.migrate.connect`."""
+    con: sqlite3.Connection
 
     def execute(self, sql: str, params: Sequence = ()):
-        cur = self.con.cursor()
-        cur.execute(self.q(sql), tuple(params))
-        return cur
+        return self.con.execute(sql, tuple(params))
 
     def fetchall(self, sql: str, params: Sequence = ()) -> list[tuple]:
-        return list(self.execute(sql, params).fetchall())
+        return [tuple(r) for r in self.con.execute(sql, tuple(params)).fetchall()]
 
     def fetchone(self, sql: str, params: Sequence = ()):
-        return self.execute(sql, params).fetchone()
+        r = self.con.execute(sql, tuple(params)).fetchone()
+        return None if r is None else tuple(r)
 
-    def commit(self) -> None:
-        self.con.commit()
-
-    # ------------------------------------------------------------------ schema
-    def preflight_mysql(self) -> None:
-        """Fail before any DDL if append-only triggers cannot be created (MySQL DDL is not transactional)."""
-        log_bin, trust = self.fetchone("SELECT @@log_bin, @@log_bin_trust_function_creators")
-        if int(log_bin or 0) and not int(trust or 0):
-            grants = " ".join(r[0] for r in self.fetchall("SHOW GRANTS FOR CURRENT_USER()"))
-            if "SUPER" not in grants and "SET_USER_ID" not in grants:
-                raise ModelDataError(
-                    "binary logging is on and log_bin_trust_function_creators is OFF: the append-only triggers "
-                    "cannot be created by this user. On Azure Database for MySQL set the server parameter "
-                    "log_bin_trust_function_creators=ON (docs/model-data/README.md), then rerun migrate.")
+    @contextmanager
+    def tx(self):
+        """One atomic write. Nested use joins the outer transaction."""
+        if self.con.in_transaction:
+            yield
+            return
+        self.con.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+            self.con.execute("COMMIT")
+        except BaseException:
+            if self.con.in_transaction:
+                self.con.execute("ROLLBACK")
+            raise
 
     def migrate(self) -> list[str]:
-        applied = []
-        if self.dialect == "mysql":
-            self.preflight_mysql()
-        existing = {}
+        from gambling.db.migrate import apply_migrations
+        return apply_migrations(self.con)
+
+    def snapshot(self, dest: Path) -> dict:
+        """Consistent point-in-time copy (SQLite online backup) plus its SHA-256, for sharing or offline backup."""
+        dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            raise ModelDataError(f"{dest} exists; snapshots are never overwritten")
+        target = sqlite3.connect(str(dest))
         try:
-            existing = {r[0]: r[1] for r in self.fetchall("SELECT version, sha256 FROM schema_versions")}
-        except Exception:  # table absent: fresh database
-            if self.dialect == "mysql":
-                self.con.rollback()
-        for path in sorted((SCHEMA_DIR / self.dialect).glob("[0-9][0-9][0-9][0-9]_*.sql")):
-            version = int(path.name.split("_", 1)[0])
-            text = path.read_text(encoding="utf-8")
-            digest = sha256_bytes(text.encode("utf-8"))
-            if version in existing:
-                if existing[version] != digest:
-                    raise ModelDataError(f"schema {path.name} changed after it was applied; add a new migration")
-                continue
-            for stmt in text.split("\n-- ;;\n"):
-                if any(line.strip() and not line.strip().startswith("--") for line in stmt.splitlines()):
-                    self.con.cursor().execute(stmt)
-            self.execute("INSERT INTO schema_versions VALUES (?, ?, ?, ?)", (version, path.name, digest, utcnow()))
-            self.commit()
-            applied.append(path.name)
-        return applied
+            self.con.backup(target)
+        finally:
+            target.close()
+        digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+        Path(str(dest) + ".sha256").write_text(f"{digest}  {dest.name}\n", encoding="utf-8")
+        return {"path": str(dest), "bytes": dest.stat().st_size, "sha256": digest,
+                "migrations": [r[0] for r in self.fetchall("SELECT version FROM schema_migrations ORDER BY version")]}
 
     # ------------------------------------------------------------------ source evidence
     def register_source(self, data: bytes, original_name: str, sensitivity: str, provenance: str,
@@ -206,20 +191,20 @@ class Store:
         if sensitivity not in SENSITIVITIES:
             raise ModelDataError(f"sensitivity must be one of {SENSITIVITIES}")
         digest = sha256_bytes(data)
-        if self.fetchone("SELECT sha256 FROM source_files WHERE sha256 = ?", (digest,)):
+        if self.fetchone("SELECT sha256 FROM md_source_files WHERE sha256 = ?", (digest,)):
             return digest  # identical bytes already preserved; content-addressed, nothing to change
         chunks = [data[i:i + CHUNK] for i in range(0, len(data), CHUNK)] or [b""]
-        self.execute("INSERT INTO source_files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                     (digest, len(data), original_name, media_type_for(original_name), sensitivity, provenance,
-                      parent_sha256, parent_member_path, len(chunks), utcnow(), actor))
-        for i, chunk in enumerate(chunks):
-            self.execute("INSERT INTO source_file_chunks VALUES (?, ?, ?)", (digest, i, chunk))
-        self.commit()
+        with self.tx():
+            self.execute("INSERT INTO md_source_files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                         (digest, len(data), original_name, media_type_for(original_name), sensitivity, provenance,
+                          parent_sha256, parent_member_path, len(chunks), utcnow(), actor))
+            for i, chunk in enumerate(chunks):
+                self.execute("INSERT INTO md_source_file_chunks VALUES (?, ?, ?)", (digest, i, chunk))
         return digest
 
     def read_source(self, digest: str) -> bytes:
-        rows = self.fetchall("SELECT data FROM source_file_chunks WHERE sha256 = ? ORDER BY chunk_no", (digest,))
-        meta = self.fetchone("SELECT bytes, chunk_count FROM source_files WHERE sha256 = ?", (digest,))
+        rows = self.fetchall("SELECT data FROM md_source_file_chunks WHERE sha256 = ? ORDER BY chunk_no", (digest,))
+        meta = self.fetchone("SELECT bytes, chunk_count FROM md_source_files WHERE sha256 = ?", (digest,))
         if meta is None:
             raise ModelDataError(f"unknown source {digest}")
         data = b"".join(bytes(r[0]) for r in rows)
@@ -235,66 +220,68 @@ class Store:
 
     # ------------------------------------------------------------------ datasets
     def ensure_dataset(self, dataset_id: str, domain: str, sport: Optional[str], description: str) -> None:
-        if not self.fetchone("SELECT dataset_id FROM datasets WHERE dataset_id = ?", (dataset_id,)):
-            self.execute("INSERT INTO datasets VALUES (?, ?, ?, ?, ?)", (dataset_id, domain, sport, description,
+        if not self.fetchone("SELECT dataset_id FROM md_datasets WHERE dataset_id = ?", (dataset_id,)):
+            self.execute("INSERT INTO md_datasets VALUES (?, ?, ?, ?, ?)", (dataset_id, domain, sport, description,
                                                                          utcnow()))
-            self.commit()
 
     def import_version(self, dataset_id: str, version_label: str, source_sha256: str, parser: str,
                        actor: str, available_from_utc: Optional[str] = None, time_column: Optional[str] = None,
                        parent_version_id: Optional[int] = None, notes: Optional[str] = None,
-                       reviewed_columns: Optional[dict[str, str]] = None) -> int:
-        existing = self.fetchone("SELECT version_id, source_sha256 FROM dataset_versions WHERE dataset_id = ? AND "
+                       reviewed_columns: Optional[dict[str, str]] = None,
+                       game_key_column: Optional[str] = None) -> int:
+        existing = self.fetchone("SELECT version_id, source_sha256 FROM md_dataset_versions WHERE dataset_id = ? AND "
                                  "version_label = ?", (dataset_id, version_label))
         if existing:
             if existing[1] != source_sha256:
                 raise ModelDataError(f"{dataset_id}@{version_label} already exists with different source bytes")
             return int(existing[0])
-        sensitivity = self.fetchone("SELECT sensitivity FROM source_files WHERE sha256 = ?", (source_sha256,))[0]
+        sensitivity = self.fetchone("SELECT sensitivity FROM md_source_files WHERE sha256 = ?", (source_sha256,))[0]
         columns, dtypes, rows = parse_table(self.read_source(source_sha256), parser)
         flags = guard_columns(columns, sensitivity, reviewed_columns)
-        t_idx = columns.index(time_column) if time_column else None
-        if time_column and t_idx is None:
+        if time_column and time_column not in columns:
             raise ModelDataError(f"time_column {time_column!r} not in columns")
+        t_idx = columns.index(time_column) if time_column else None
+        if game_key_column and game_key_column not in columns:
+            raise ModelDataError(f"game_key_column {game_key_column!r} not in columns")
+        g_idx = columns.index(game_key_column) if game_key_column else None
         row_hashes = []
         payload = []
         for n, values in enumerate(rows):
             js = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
             h = sha256_bytes(js.encode("utf-8"))
             row_hashes.append(h)
-            payload.append((n, values[t_idx] if t_idx is not None and t_idx < len(values) else None, h, js))
+            payload.append((n, _at(values, t_idx), _at(values, g_idx) or None, h, js))
         content = sha256_bytes("".join(row_hashes).encode("ascii"))
-        cur = self.execute("INSERT INTO dataset_versions (dataset_id, version_label, source_sha256, parser, "
-                           "available_from_utc, time_column, row_count, column_count, content_sha256, "
-                           "parent_version_id, import_tool, created_utc, notes) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                           (dataset_id, version_label, source_sha256, parser, available_from_utc, time_column,
-                            len(rows), len(columns), content, parent_version_id, IMPORT_TOOL, utcnow(), notes))
-        version_id = int(cur.lastrowid)
-        if columns:
-            self.con.cursor().executemany(self.q("INSERT INTO dataset_columns VALUES (?, ?, ?, ?, ?)"),
-                                          [(version_id, i, c, d, f) for i, (c, d, f) in
-                                           enumerate(zip(columns, dtypes, flags))])
-        batch = 2000
-        for i in range(0, len(payload), batch):
-            self.con.cursor().executemany(self.q("INSERT INTO dataset_rows VALUES (?, ?, ?, ?, ?)"),
-                                          [(version_id, *p) for p in payload[i:i + batch]])
-        self.execute("INSERT INTO dataset_version_events (version_id, status, reason, event_utc, actor) "
-                     "VALUES (?, 'STAGED', ?, ?, ?)", (version_id, "imported", utcnow(), actor))
-        self.commit()
+        with self.tx():
+            cur = self.execute("INSERT INTO md_dataset_versions (dataset_id, version_label, source_sha256, parser, "
+                               "available_from_utc, time_column, game_key_column, row_count, column_count, content_sha256, "
+                               "parent_version_id, import_tool, created_utc, notes) "
+                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               (dataset_id, version_label, source_sha256, parser, available_from_utc, time_column, game_key_column,
+                                len(rows), len(columns), content, parent_version_id, IMPORT_TOOL, utcnow(), notes))
+            version_id = int(cur.lastrowid)
+            if columns:
+                self.con.executemany(("INSERT INTO md_dataset_columns VALUES (?, ?, ?, ?, ?)"),
+                                              [(version_id, i, c, d, f) for i, (c, d, f) in
+                                               enumerate(zip(columns, dtypes, flags))])
+            batch = 2000
+            for i in range(0, len(payload), batch):
+                self.con.executemany(("INSERT INTO md_dataset_rows VALUES (?, ?, ?, ?, ?, ?)"),
+                                              [(version_id, *p) for p in payload[i:i + batch]])
+            self.execute("INSERT INTO md_dataset_version_events (version_id, status, reason, event_utc, actor) "
+                         "VALUES (?, 'STAGED', ?, ?, ?)", (version_id, "imported", utcnow(), actor))
         return version_id
 
     def set_status(self, version_id: int, status: str, reason: str, actor: str) -> None:
-        self.execute("INSERT INTO dataset_version_events (version_id, status, reason, event_utc, actor) "
+        self.execute("INSERT INTO md_dataset_version_events (version_id, status, reason, event_utc, actor) "
                      "VALUES (?, ?, ?, ?, ?)", (version_id, status, reason, utcnow(), actor))
-        self.commit()
 
     def status(self, version_id: int) -> Optional[str]:
-        r = self.fetchone("SELECT status FROM dataset_version_status WHERE version_id = ?", (version_id,))
+        r = self.fetchone("SELECT status FROM md_dataset_version_status WHERE version_id = ?", (version_id,))
         return r[0] if r else None
 
     def columns(self, version_id: int) -> list[str]:
-        return [r[0] for r in self.fetchall("SELECT name FROM dataset_columns WHERE version_id = ? ORDER BY ordinal",
+        return [r[0] for r in self.fetchall("SELECT name FROM md_dataset_columns WHERE version_id = ? ORDER BY ordinal",
                                             (version_id,))]
 
     def rows(self, version_id: int, as_of_utc: Optional[str] = None,
@@ -303,7 +290,7 @@ class Store:
         (rows without a time value are excluded unless ``include_untimed``)."""
         cols = self.columns(version_id)
         out = []
-        for row_time, js in self.fetchall("SELECT row_time_utc, row_json FROM dataset_rows WHERE version_id = ? "
+        for row_time, js in self.fetchall("SELECT row_time_utc, row_json FROM md_dataset_rows WHERE version_id = ? "
                                           "ORDER BY row_no", (version_id,)):
             if as_of_utc is not None:
                 if row_time in (None, ""):
@@ -319,7 +306,7 @@ class Store:
         """Latest PUBLISHED version whose content was knowable at the cutoff."""
         best = None
         for version_id, available, status in self.fetchall(
-                "SELECT version_id, available_from_utc, status FROM dataset_version_status WHERE dataset_id = ?",
+                "SELECT version_id, available_from_utc, status FROM md_dataset_version_status WHERE dataset_id = ?",
                 (dataset_id,)):
             if status != "PUBLISHED" or available is None or _ts(available) > _ts(cutoff_utc):
                 continue
@@ -329,12 +316,12 @@ class Store:
 
     def verify_version(self, version_id: int) -> dict:
         """Re-parse the preserved source bytes and compare every row hash with the stored rows."""
-        source, parser, content = self.fetchone("SELECT source_sha256, parser, content_sha256 FROM dataset_versions "
+        source, parser, content = self.fetchone("SELECT source_sha256, parser, content_sha256 FROM md_dataset_versions "
                                                 "WHERE version_id = ?", (version_id,))
         columns, _, rows = parse_table(self.read_source(source), parser)
         hashes = [sha256_bytes(json.dumps(v, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
                   for v in rows]
-        stored = [r[0] for r in self.fetchall("SELECT row_sha256 FROM dataset_rows WHERE version_id = ? ORDER BY "
+        stored = [r[0] for r in self.fetchall("SELECT row_sha256 FROM md_dataset_rows WHERE version_id = ? ORDER BY "
                                               "row_no", (version_id,))]
         ok = hashes == stored and columns == self.columns(version_id) and \
             sha256_bytes("".join(hashes).encode("ascii")) == content
@@ -342,28 +329,48 @@ class Store:
 
     # ------------------------------------------------------------------ runs
     def register_run(self, run_id: str, kind: str, release_ids: Sequence[str], environment: dict, scorer: Any,
-                     input_cutoff_utc: Optional[str] = None, notes: Optional[str] = None) -> None:
-        if self.fetchone("SELECT run_id FROM model_runs WHERE run_id = ?", (run_id,)):
+                     input_cutoff_utc: Optional[str] = None, notes: Optional[str] = None,
+                     sport: Optional[str] = None, batch_id: Optional[str] = None,
+                     quote_cohort_id: Optional[str] = None) -> None:
+        """Register a run against releases already in ``model_releases``; never creates a release."""
+        if self.fetchone("SELECT run_id FROM md_model_runs WHERE run_id = ?", (run_id,)):
             return
-        self.execute("INSERT INTO model_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                     (run_id, kind, json.dumps(list(release_ids)), input_cutoff_utc, json.dumps(environment),
-                      json.dumps(scorer), utcnow(), notes))
-        self.commit()
+        known = {r[0] for r in self.fetchall("SELECT release_id FROM model_releases")}
+        missing = [r for r in release_ids if r not in known]
+        if missing:
+            raise ModelDataError(f"releases {missing} are not registered in model_releases; register them through "
+                                 "a reviewed registry migration first")
+        with self.tx():
+            self.execute("INSERT INTO md_model_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                         (run_id, kind, sport, batch_id, quote_cohort_id, input_cutoff_utc, json.dumps(environment),
+                          json.dumps(scorer), utcnow(), notes))
+            self.con.executemany("INSERT INTO md_run_releases VALUES (?, ?)",
+                                 [(run_id, r) for r in dict.fromkeys(release_ids)])
+
+    def run_releases(self, run_id: str) -> list[str]:
+        return [r[0] for r in self.fetchall("SELECT release_id FROM md_run_releases WHERE run_id = ? "
+                                            "ORDER BY release_id", (run_id,))]
+
+    def link_scores(self, run_id: str, score_ids: Iterable[str], basis: str) -> int:
+        """Record which existing ``model_scores`` rows this run reproduces."""
+        rows = [(run_id, str(s), basis, utcnow()) for s in score_ids]
+        with self.tx():
+            self.con.executemany("INSERT OR IGNORE INTO md_run_score_links VALUES (?, ?, ?, ?)", rows)
+        return len(rows)
 
     def pin_input(self, run_id: str, stage_path: str, role: str, source_sha256: str,
                   version_id: Optional[int] = None) -> None:
-        r = self.fetchone("SELECT source_sha256 FROM run_inputs WHERE run_id = ? AND stage_path = ?",
+        r = self.fetchone("SELECT source_sha256 FROM md_run_inputs WHERE run_id = ? AND stage_path = ?",
                           (run_id, stage_path))
         if r:
             if r[0] != source_sha256:
                 raise ModelDataError(f"{run_id}:{stage_path} already pinned to different bytes")
             return
-        self.execute("INSERT INTO run_inputs VALUES (?, ?, ?, ?, ?)", (run_id, stage_path, role, version_id,
+        self.execute("INSERT INTO md_run_inputs VALUES (?, ?, ?, ?, ?)", (run_id, stage_path, role, version_id,
                                                                        source_sha256))
-        self.commit()
 
     def run_inputs(self, run_id: str) -> list[tuple[str, str, str, Optional[int]]]:
-        return [tuple(r) for r in self.fetchall("SELECT stage_path, role, source_sha256, version_id FROM run_inputs "
+        return [tuple(r) for r in self.fetchall("SELECT stage_path, role, source_sha256, version_id FROM md_run_inputs "
                                                 "WHERE run_id = ? ORDER BY stage_path", (run_id,))]
 
     def materialize_run(self, run_id: str, dest: Path, roles: Iterable[str] = ("INPUT", "EXPECTED_OUTPUT",
@@ -376,9 +383,8 @@ class Store:
         return out
 
     def record_result(self, run_id: str, input_source: str, status: str, report: dict) -> None:
-        self.execute("INSERT INTO run_results (run_id, executed_utc, input_source, status, report_json) "
+        self.execute("INSERT INTO md_run_results (run_id, executed_utc, input_source, status, report_json) "
                      "VALUES (?, ?, ?, ?, ?)", (run_id, utcnow(), input_source, status, json.dumps(report)))
-        self.commit()
 
 
 def _ts(value: str) -> datetime:
@@ -387,22 +393,14 @@ def _ts(value: str) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def connect(url: str) -> Store:
-    parsed = urlparse(url)
-    if parsed.scheme == "sqlite":
-        path = url[len("sqlite:///"):] if url.startswith("sqlite:///") else parsed.path
-        con = sqlite3.connect(path or ":memory:")
-        con.execute("PRAGMA foreign_keys = ON")
-        return Store(con, "sqlite")
-    if parsed.scheme == "mysql":
-        try:
-            import pymysql
-        except ImportError as exc:
-            raise ModelDataError("MySQL backend needs PyMySQL: pip install -e .[mysql]") from exc
-        opts = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        ssl = {"ca": opts["ssl_ca"]} if "ssl_ca" in opts else None
-        con = pymysql.connect(host=parsed.hostname, port=parsed.port or 3306, user=unquote(parsed.username or ""),
-                              password=unquote(parsed.password or ""), database=parsed.path.lstrip("/"),
-                              charset="utf8mb4", ssl=ssl, autocommit=False)
-        return Store(con, "mysql")
-    raise ModelDataError(f"unsupported URL scheme {parsed.scheme!r}")
+def _at(values: Sequence, idx: Optional[int]) -> Optional[str]:
+    return values[idx] if idx is not None and idx < len(values) else None
+
+
+def open_store(path: Path | str, migrate: bool = True) -> Store:
+    """Open the rolling history database (``data/gambling.sqlite``) as a model-input store."""
+    from gambling.db.migrate import apply_migrations, connect as db_connect
+    store = Store(db_connect(Path(path)))
+    if migrate:
+        apply_migrations(store.con)
+    return store
