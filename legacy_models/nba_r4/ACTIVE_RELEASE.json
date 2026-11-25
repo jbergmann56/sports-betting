@@ -1,0 +1,39 @@
+{
+  "revision": "NBA_PREVIOUS_PRODUCTION_R4_20261030",
+  "effective_date": "2026-10-30",
+  "supersedes_operational_overlay": [
+    "NBA_AUTHORITATIVE_R3_20261029"
+  ],
+  "structural_scoring": "Previous deployed feature implementation and original historical inputs; frozen V27 coefficients",
+  "markets": {
+    "Total": {
+      "status": "RESTORED_PREVIOUS_UNDER_B",
+      "normal_wager": true
+    },
+    "Spread": {
+      "status": "RETAIN_REFERENCE",
+      "normal_wager": true
+    },
+    "Moneyline": {
+      "status": "RETAIN_REFERENCE",
+      "normal_wager": true
+    }
+  },
+  "probability_promotion": "NONE; new calibration models shadow only",
+  "kelly": "standalone Full Kelly plus joint posterior-predictive portfolio optimization; no N_eff multiplier",
+  "review": {
+    "cadence": "monthly manual review",
+    "promotion_requires": [
+      "future pregame-frozen paired probability scores",
+      "credible paired expected-growth improvement at identical odds",
+      "consistent membership and feature definitions",
+      "no selection based only on recent P&L"
+    ]
+  },
+  "limitations": "historical quotes accepted with documented missing provenance",
+  "status": "ACTIVE_PREVIOUS_SCORER_RESTORED_BY_USER",
+  "history_last_date": "2026-10-29",
+  "portfolio_status": "IMPLEMENTED_CONDITIONAL_DEPENDENCE_ESTIMATE_SHADOW",
+  "challenger": "NBA_AUTHORITATIVE_R3_20261029",
+  "reason": "Explicit user instruction: restore previous deployed model as production; R3 challenger"
+}

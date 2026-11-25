@@ -1,0 +1,11 @@
+{
+  "endpoint": "https://www.bovada.lv/services/sports/event/v2/events/A/description/football/nfl",
+  "retrieved_at_utc": "2026-11-10T13:27:12.524437+00:00",
+  "payload_sha256": "2d9ee2a665f80e41d2b7383160d6933b3eeb3b1f50a281b2f422ec7641ec6d65",
+  "events_accepted": 12,
+  "market_pairs": 36,
+  "events_skipped": 2,
+  "market_scope": "NFL full-game pregame main spread, moneyline, total only",
+  "prices": "Bovada endpoint snapshot, not guaranteed executable later",
+  "timezone": "America/Chicago"
+}

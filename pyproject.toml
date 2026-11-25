@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gambling-research-offline"
+version = "0.2.0"
+description = "Frozen Gambling evidence, reliable Bovada odds capture, rolling SQLite history"
+requires-python = ">=3.11"
+
+[project.scripts]
+gambling-research = "gambling.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gambling*"]
+
+[tool.setuptools.package-data]
+"gambling.db" = ["migrations/*.sql"]

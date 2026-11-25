@@ -1,339 +1,197 @@
-# 🎰 Multi-Sport Betting Tracker
+# Gambling project — Python migration
 
-A comprehensive, extensible betting tracker application with automated data collection, bulk import capabilities, and advanced analytics. Built for serious sports bettors who want to track performance across multiple sports.
+A deterministic analysis and recordkeeping package for the Gambling project:
+the frozen November 11, 2026 evidence archive, reliable read-only capture of
+Bovada's public odds feed, and a persistent append-only SQLite history that
+grows with every capture. It is built to become a module of a larger sports
+betting app (`import gambling`), with the CLI as a thin wrapper.
 
-## 🌟 Features
+**Working now:** frozen-archive audit and score review, research-only parlay
+review, Bovada odds capture (`fetch`), rolling SQLite history (`db`, `ingest`,
+`history`), point-in-time exports, and regression tests.
 
-### ✅ Currently Supported
-- **Multi-Sport Support**: NHL, NBA, NFL, MLB, NCAA Basketball (easily extensible)
-- **Bulk Import**: Copy/paste games directly from Bovada - no manual entry
-- **Bet Tracking**: Track spreads, moneylines, and over/unders
-- **Performance Analytics**: Win rates, ROI, profit/loss tracking
-- **Historical Data Import**: Import your existing Excel betting data
-- **Kelly Criterion Calculator**: Optimize bet sizing
-- **Azure MySQL Backend**: Scalable cloud database storage
-- **Streamlit UI**: Clean, intuitive web interface
+**Not yet working:** fresh model scoring of new captures (new games show as
+`UNSCORED`), schedule cross-checks for games the book never listed, historical
+feature updates, real parlay book prices, personal transaction import, bonus
+settlement, or bet sizing. Do not mistake historical saved EV for currently
+offered EV. Nothing here logs in to a sportsbook or places wagers.
 
-### 🚧 Coming Soon
-- Automated odds scraping from multiple sportsbooks
-- Live score updates via APIs
-- Advanced model predictions
-- Email/SMS alerts for +EV bets
-- Mobile-responsive improvements
+## Run locally
 
-## 🏗️ Architecture
+Python 3.11+, standard library only.
 
-```
-┌─────────────────────────────────────────┐
-│         Streamlit Frontend              │
-│   (Bet entry, bulk import, analytics)   │
-└────────────────┬────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────┐
-│      Python Application Layer           │
-│  • Database Manager                     │
-│  • Bovada Parser                        │
-│  • Historical Importer                  │
-│  • Sport-specific modules               │
-└────────────────┬────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────┐
-│         Azure MySQL Database            │
-│  • Games & Teams                        │
-│  • Odds & Lines                         │
-│  • Bets & Results                       │
-│  • Team Ratings (SRS, etc.)             │
-└─────────────────────────────────────────┘
-```
+```powershell
+# one-time: build the rolling database from the frozen archive
+python -m gambling db init
 
-## 📋 Prerequisites
+# capture odds to files, then load them into the database
+python -m gambling fetch                         # all five sports
+python -m gambling fetch --sports NBA,NHL
+python -m gambling ingest --all                  # every capture not yet ingested
+python -m gambling ingest data/captures/<run_id> # one specific run
 
-- Python 3.8+
-- Azure MySQL Database (or local MySQL)
-- Azure Data Lake Gen2 (optional, for future features)
+# query the rolling history
+python -m gambling history latest --sport NBA    # newest price per upcoming game/market/side
+python -m gambling history find "Celtics"        # look up game keys
+python -m gambling history lines NBA:BOVADA:33233970
+python -m gambling history health                # how reliable Bovada fetches were, by day/sport
 
-## 🚀 Quick Start
+# model registry
+python -m gambling models list                   # every release: role, authority, betting, files
+python -m gambling models show NBA_R4_V27_20261030
+python -m gambling models verify                 # re-hash every registered model file
+python -m gambling models attribution            # how all recorded scores map to releases
 
-### 1. Clone the Repository
+python -m gambling db status                     # migrations, counts, integrity
+python -m gambling db export                     # new dated archive under data/archives/
 
-```bash
-git clone <your-repo>
-cd betting-tracker
+# frozen evidence (read-only)
+python -m gambling audit
+python -m gambling scores --date 2026-11-11      # `replay` is the original alias
+python -m gambling parlays --date 2026-11-11 --limit 8
+python -m gambling fetch --replay data/captures/<run_id>   # rebuild a capture offline
+
+python -m unittest discover -s tests -v
 ```
 
-### 2. Install Dependencies
+Set `GAMBLING_DATA_DIR` to keep the data somewhere other than `./data`.
 
-```bash
-pip install -r requirements.txt
-```
+## Repository layout (2026-11-12 reorganization)
 
-### 3. Configure Environment
+The `gambling` package now lives at the repository root (formerly `bovada_lines/`).
 
-Copy the `.env.template` to `.env` and fill in your Azure MySQL credentials:
+| Path | Purpose |
+|---|---|
+| `gambling/` | Application package (capture, db, history; scoring/accounts/performance being added) |
+| `legacy_models/`, `legacy_ops/` | Frozen original model code and one-off scripts — read-only evidence |
+| `legacy/v1_app/` | Archived Oct-2025 Streamlit app — reference only |
+| `bovada_transactions/` | Account exporter script (to be ported into `gambling/accounts/`) |
+| `data/` | Working data — gitignored except the frozen archive and Nov-11 evidence |
 
-```bash
-cp .env.template .env
-nano .env  # Edit with your credentials
-```
+### Account data
 
-**Required variables:**
-```
-AZURE_MYSQL_HOST=your-server.mysql.database.azure.com
-AZURE_MYSQL_USER=your_username@your-server
-AZURE_MYSQL_PASSWORD=your_password
-AZURE_MYSQL_DATABASE=betting_tracker
-AZURE_MYSQL_PORT=3306
-```
+Bovada account exports, saved account pages, P&L baselines (`data/accounts/`,
+`data/baselines/`) and the exporter's logged-in browser profile are **never
+committed** (see `.gitignore`). Keep the browser profile outside the repository
+folder and exclude `data/accounts/` and `data/baselines/` from any snapshot ZIP
+you share.
 
-### 4. Run Setup
-
-This will create database tables and optionally import historical data:
-
-```bash
-python setup.py
-```
-
-### 5. Start the Application
-
-```bash
-streamlit run app.py
-```
-
-The app will open in your browser at `http://localhost:8501`
-
-## 📊 Using the Application
-
-### Bulk Import from Bovada
-
-1. Navigate to **📝 Bulk Import**
-2. Go to Bovada and find today's games
-3. Select and copy ALL game information (dates, teams, odds)
-4. Paste into the text area
-5. Click **Parse & Preview**
-6. Review parsed games and click **Import to Database**
-
-**Example format:**
-```
-12/8/2024 7:00 PM
-Boston Bruins
-Pittsburgh Penguins
-Spread
-Boston Bruins -1.5 +180
-Pittsburgh Penguins +1.5 -225
-Total
-Over 6 -115
-Under 6 -105
-Money Line
-Boston Bruins -145
-Pittsburgh Penguins +125
-```
-
-### Placing Bets
-
-1. Navigate to **🎯 Place Bets**
-2. Select the game date and game
-3. Choose bet type (spread/moneyline/over-under)
-4. Enter bet amount
-5. Review odds and potential return
-6. Click **Place Bet**
-
-### Viewing Performance
-
-1. Navigate to **📈 Performance**
-2. Select date range
-3. View metrics:
-   - Win rate
-   - Total profit/loss
-   - ROI
-   - Performance by bet type
-   - Cumulative profit chart
-
-## 🗄️ Database Schema
-
-### Core Tables
-
-**`sports`**: Available sports (NHL, NBA, NFL, etc.)  
-**`teams`**: All teams across all sports  
-**`games`**: Individual games with dates and teams  
-**`odds`**: Historical odds for each game  
-**`bets`**: Your placed bets with outcomes  
-**`team_ratings`**: Team performance metrics (SRS, ELO, etc.)  
-**`predictions`**: Model predictions (future feature)  
-
-See `schema.sql` for complete schema.
-
-## 🔧 Adding a New Sport
-
-The system is designed to be easily extensible. To add a new sport:
-
-### 1. Update `config.py`
-
-```python
-SPORT_CONFIGS['YOUR_SPORT'] = SportConfig(
-    name='Your Sport',
-    abbrev='YOUR_SPORT',
-    stat_source='https://...',
-    primary_rating='RATING_TYPE',
-    typical_total_range=(min, max)
-)
-```
-
-### 2. Add Team Name Mappings
-
-```python
-TEAM_NAME_MAPPINGS['YOUR_SPORT'] = {
-    'Abbrev': 'Full Team Name',
-    # ...
-}
-```
-
-### 3. Create Sport-Specific Module (Optional)
-
-For sport-specific logic:
-```python
-# sports/your_sport.py
-class YourSportHandler:
-    def calculate_spread(self, ...):
-        # Sport-specific calculations
-        pass
-```
-
-### 4. Add to Database
-
-```sql
-INSERT INTO sports (sport_name, sport_abbrev) 
-VALUES ('Your Sport', 'YOUR_SPORT');
-```
-
-## 📦 Project Structure
+## Layout
 
 ```
-betting-tracker/
-├── app.py                    # Main Streamlit application
-├── config.py                 # Configuration and constants
-├── database.py               # Database manager
-├── bovada_parser.py          # Bulk paste parser
-├── historical_importer.py    # Excel data importer
-├── schema.sql                # Database schema
-├── requirements.txt          # Python dependencies
-├── setup.py                  # Setup script
-├── .env.template             # Environment template
-└── README.md                 # This file
+gambling/
+  config.py      data locations (GAMBLING_DATA_DIR override)
+  odds.py        American/decimal/break-even arithmetic
+  timeutil.py    UTC helpers, US-Central betting day
+  bovada/        fetch: endpoint ladder, transport + classification, parser, capture files
+  db/            rolling SQLite: migrations/*.sql, frozen baseline import, ingest, queries, export
+  history/       read-only queries over the frozen archive
+  cli.py         argument parsing and output only
+legacy_models/, legacy_ops/   archived reference code — read-only, not imported
 ```
 
-## 🔐 Security Notes
+## Data files
 
-- **Never commit `.env` file** - It contains credentials
-- Use Azure Key Vault for production deployments
-- Enable SSL for MySQL connections
-- Rotate database passwords regularly
+| Path | What it is | Mutable? |
+|---|---|---|
+| `data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip` | Frozen original evidence (Library v28) | Never |
+| `data/history.sqlite` | Disposable read-only extraction of the archive | Regenerated |
+| `data/captures/<run_id>/` | Raw Bovada responses + `manifest.json`, `board.json`, `quotes.csv` | Append-only files |
+| `data/gambling.sqlite` | Rolling history: frozen rows + every ingested capture | Append-only rows |
+| `data/archives/GAMBLING_HISTORY_<utc>.zip` | Point-in-time exports with manifest | Never overwritten |
 
-## 🚀 Deployment Options
+Raw HTTP bodies stay as files in `data/captures/`; the database stores their
+path and SHA-256, and `ingest` verifies every body before loading a run.
+`gambling.sqlite` can always be rebuilt from the frozen ZIP plus the capture
+folders, so back up `data/captures/` alongside the exports.
 
-### Option 1: Local Machine
-Run on your laptop/desktop for personal use:
-```bash
-streamlit run app.py
-```
+## Bovada capture (`gambling/bovada/`)
 
-### Option 2: Azure App Service
-Deploy to Azure for cloud access:
+**Why fetches used to fail:** Bovada's CDN caches every distinct URL separately.
+Individual URL variants of a league feed were observed (2026-11-11) serving a
+cached empty `{}` with HTTP 200 for days (`Age` header up to ~350,000 s) while
+another variant of the same feed was fresh. The old scripts saved that `{}` as
+if it were a valid board and stamped it with the file's modification time.
 
-1. Create Azure App Service (Python 3.8+)
-2. Set environment variables in Application Settings
-3. Deploy via Git or Azure CLI
-4. Configure custom domain (optional)
+**What `fetch` does now:**
 
-### Option 3: Docker
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-CMD ["streamlit", "run", "app.py"]
-```
+- Tries a ladder of equivalent URL variants per sport (`endpoints.py`) and
+  classifies every response: `OK`, `EMPTY`, `STALE` (CDN `Age` > `--max-age`,
+  default 900 s), `NON_JSON`, `TRUNCATED`, `MALFORMED`, `BLOCKED`, `RATE_LIMITED`,
+  `HTTP_5XX`, `NETWORK_ERROR`, etc. Only network/5xx/429/truncation are retried
+  (exponential backoff, `Retry-After` honoured); a cached answer moves on to the
+  next variant instead.
+- Unions events across fresh variants; per event, the freshest copy wins.
+- Re-fetches the event page for pregame games missing any main-market side and
+  accepts it only if it is fresh and strictly better.
+- Emits six sides per game (ML/spread/total) with an explicit status:
+  `OFFERED_PREGAME`, `SUSPENDED`, `NOT_OFFERED`, `NOT_PREGAME`, `SPECIAL_NON_GAME`.
+- Quote time is `snapshot_as_of_utc` = response `Date` − CDN `Age`, recorded per
+  event with the attempt it came from. Cross-sport skew is reported, not hidden.
+- Exit code 2 if any sport is `FAILED`/`BLOCKED`.
 
-## 📊 Integration with Tableau
+## Rolling history (`gambling/db/`)
 
-The MySQL database can be connected directly to Tableau:
+- **Migrations** (`db/migrations/NNNN_name.sql`) are applied once and recorded
+  with their SHA-256 in `schema_migrations`; an edited, already-applied
+  migration is refused. `0001` is the frozen archive's exact schema.
+- **Baseline:** `db init` copies every frozen row in (counts verified, archive
+  hash recorded in `history_imports`), once.
+- **Ingest** writes one capture run per transaction: `fetch_runs`,
+  `fetch_attempts`, `sport_fetch_status`, then `capture_batches`, 120-second
+  `quote_cohorts`, `events` and `market_quotes` (with Bovada market/outcome/price
+  IDs). Re-ingesting an unchanged run is a no-op; changed capture JSON is an error.
+- **Append-only:** triggers reject `UPDATE`/`DELETE` on evidence tables. New
+  quotes must use the controlled status vocabulary.
+- **Views:** `latest_quotes`, `line_movement` (one row per distinct snapshot —
+  two runs that received the same cached object count once), `capture_health`,
+  `sport_health`, plus the original `game_scoring_coverage`.
 
-1. In Tableau, select **MySQL** connector
-2. Enter your Azure MySQL credentials
-3. Select tables to import
-4. Create visualizations
+## Model registry (migrations `0004`–`0005`)
 
-**Recommended approach:**
-- Use Streamlit for daily operations (bet entry, quick views)
-- Use Tableau for deep analysis and presentations
+Each prediction links to the model release that made it by `release_id`;
+hashes are not needed for that join. They confirm what a release ID means:
 
-## 🤝 Contributing
+- `model_releases` — one row per frozen release or shared component, with
+  `artifact_status` (`COMPLETE`, `IN_FROZEN_ARCHIVE`, `PARTIAL`, `ARTIFACTS_MISSING`).
+- `model_release_artifacts` — the files that define each release, with sha256
+  (`models verify` re-checks them).
+- `model_release_status` — append-only history of role (champion / challenger /
+  shadow / research / retired), scoring authority and wagering authorization,
+  each with its documented source. A later change is a new row, so the status
+  in effect at any past quote time stays queryable.
+- `model_release_aliases` — maps the 29 legacy free-text `model_version` labels
+  (per market where needed) onto releases, with evidence level.
+- New scores must carry `release_id`, and a trigger rejects a
+  `PRODUCTION_QUALIFIED` score from any release that was not a
+  wagering-authorized champion at quote time.
 
-This is a personal project, but suggestions are welcome!
+Views: `current_release_status`, `release_status_history`,
+`model_score_attribution` (every score → release), and `model_predictions`
+(one row per distinct prediction). The legacy NCAAFB scorer stored its shared
+ML and totals components under both the champion and challenger
+configurations; those 858 duplicate rows collapse in `model_predictions`
+(champion copy kept), while `model_scores` keeps every row as recorded.
 
-Areas for improvement:
-- Additional sportsbooks beyond Bovada
-- Machine learning models for predictions
-- Mobile app version
-- Live odds tracking
-- Arbitrage opportunity detection
+## Technical boundary
 
-## 📝 Future Roadmap
+The database contains timestamped quotes and frozen model scores, **not**
+authoritative Bovada account balances. `settlements` are matched game finals.
+Simulated quote outcomes must not be presented as actual wager P&L.
 
-### Phase 1 (Current) ✅
-- Multi-sport support
-- Bulk import from Bovada
-- Basic bet tracking
-- Historical data import
+Legacy rows keep their original conventions (some batches use team names as
+`side`, `OPEN`/`MISSING` statuses, or non-Bovada `game_key` formats). They are
+preserved as recorded; normalization belongs in separate versioned views.
 
-### Phase 2 (Next)
-- [ ] Automated odds scraping
-- [ ] NHL API integration for live scores
-- [ ] Kelly Criterion automation
-- [ ] Alert system for +EV bets
+The existing model code is not plug-and-play as a five-sport live pipeline.
+Before promoting any adapter, run a verified parity test against the original
+frozen scoring output and known point-in-time inputs.
 
-### Phase 3 (Future)
-- [ ] Machine learning models
-- [ ] Multiple sportsbook comparison
-- [ ] Arbitrage detection
-- [ ] Social features (share picks)
+Read `CLAUDE.md` for mandatory model and data safeguards and `ROADMAP.md` for
+the incremental build.
 
-## 🐛 Troubleshooting
+## Development and documentation workflow (V1)
 
-### Database Connection Issues
-```bash
-# Test connection
-python -c "from database import DatabaseManager; db = DatabaseManager(); print('Connected!' if db else 'Failed')"
-```
+The source-of-truth engineering rules are in [docs/engineering-policy.md](docs/engineering-policy.md). See [docs/branch-strategy.md](docs/branch-strategy.md) for sport-specific branches and the Streamlit workstream, [docs/betsheets/shared-contract.md](docs/betsheets/shared-contract.md) for required bet-sheet columns and statuses, and [ROADMAP.md](ROADMAP.md) for actual implementation status.
 
-### Import Errors
-- Check that Excel file is in correct format
-- Verify team names match database
-- Check date formats (MM/DD/YYYY)
-
-### Streamlit Won't Start
-```bash
-# Check port availability
-lsof -i :8501
-
-# Run on different port
-streamlit run app.py --server.port 8502
-```
-
-## 📧 Support
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Review error logs in terminal
-3. Verify database connection and credentials
-
-## 📄 License
-
-This is a personal project. Use at your own risk. Sports betting involves financial risk.
-
-**Disclaimer**: This tool is for tracking and analysis purposes only. Always gamble responsibly.
-
----
-
-Built with ❤️ by a data-driven sports bettor
+The `gambling/models/<sport>/` and `gambling/betsheets/<sport>/` directories are reserved for validated adapters; the archived models under `legacy_models/` remain immutable. Creating these directories does not make archived models executable live models. Code, tests, model registry and documentation must change together.

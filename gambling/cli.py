@@ -1,0 +1,238 @@
+"""Command line: frozen-evidence audit, Bovada odds capture, rolling SQLite history.
+
+`fetch` only reads Bovada's public odds feed and writes capture files.
+`ingest` loads those capture JSON files into the rolling database. Nothing here
+authenticates to a sportsbook, submits stakes, or approximates a model.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from .config import Paths, default_paths
+from .history import frozen
+
+EXIT_OK, EXIT_CHECK_FAILED, EXIT_FETCH_INCOMPLETE = 0, 1, 2
+
+
+def _emit(result: Any) -> None:
+    print(json.dumps(result, indent=2, default=str))
+
+
+# -- frozen evidence ---------------------------------------------------------
+
+def cmd_init(args, paths: Paths) -> int:
+    print(f"Initialized local history: {frozen.extract_frozen(paths, force=args.force)}")
+    return EXIT_OK
+
+
+def cmd_audit(args, paths: Paths) -> int:
+    with frozen.connect_frozen(paths) as con:
+        result = frozen.audit(con)
+    _emit(result)
+    return EXIT_CHECK_FAILED if result["integrity"] != "ok" or result["foreign_key_errors"] else EXIT_OK
+
+
+def cmd_scores(args, paths: Paths) -> int:
+    with frozen.connect_frozen(paths) as con:
+        _emit(frozen.frozen_scores(con, args.date, args.batch))
+    return EXIT_OK
+
+
+def cmd_parlays(args, paths: Paths) -> int:
+    _emit(frozen.research_parlays(paths, args.date, args.limit))
+    return EXIT_OK
+
+
+# -- capture -----------------------------------------------------------------
+
+def cmd_fetch(args, paths: Paths) -> int:
+    from .bovada import FetchConfig, fetch_board, replay_run
+    from .bovada.endpoints import LEAGUES
+
+    if args.replay:
+        run = replay_run(Path(args.replay))
+    else:
+        sports = [s.strip().upper() for s in args.sports.split(",")] if args.sports else list(LEAGUES)
+        config = FetchConfig(max_age_seconds=args.max_age, all_variants=not args.first_ok,
+                             recover_events=not args.no_recover)
+        run = fetch_board(sports, Path(args.out) if args.out else paths.captures, config=config)
+    manifest = run.manifest()
+    manifest["run_dir"] = str(run.run_dir) if run.run_dir else None
+    _emit(manifest)
+    return EXIT_OK if run.ok else EXIT_FETCH_INCOMPLETE
+
+
+# -- rolling database --------------------------------------------------------
+
+def cmd_db(args, paths: Paths) -> int:
+    from . import db
+    from .db.export import export_snapshot
+    from .db.queries import status
+
+    if args.db_command == "init":
+        _emit(db.init_database(paths))
+        return EXIT_OK
+    con = db.open_database(paths)
+    try:
+        if args.db_command == "status":
+            result = status(con)
+            _emit(result)
+            return EXIT_CHECK_FAILED if result["integrity"] != "ok" or result["foreign_key_errors"] else EXIT_OK
+        _emit({"archive": str(export_snapshot(con, paths.archives))})
+        return EXIT_OK
+    finally:
+        con.close()
+
+
+def cmd_ingest(args, paths: Paths) -> int:
+    from . import db
+
+    con = db.open_database(paths)
+    try:
+        run_dirs = [Path(p) for p in args.run_dirs]
+        if args.all:
+            run_dirs += db.pending_captures(con, paths.captures)
+        if not run_dirs:
+            _emit({"ingested": [], "note": "nothing to ingest"})
+            return EXIT_OK
+        results, failed = [], False
+        for run_dir in run_dirs:
+            try:
+                results.append(db.ingest_capture(con, run_dir))
+            except (db.IngestError, OSError, ValueError) as exc:
+                failed = True
+                results.append({"run_dir": str(run_dir), "status": "ERROR", "error": str(exc)})
+        _emit({"ingested": results})
+        return EXIT_CHECK_FAILED if failed else EXIT_OK
+    finally:
+        con.close()
+
+
+def cmd_history(args, paths: Paths) -> int:
+    from . import db
+    from .db import queries
+    from .timeutil import utcnow
+
+    con = db.open_database(paths)
+    try:
+        if args.history_command == "latest":
+            after = None if args.include_started else utcnow().isoformat()
+            _emit(queries.latest_quotes(con, args.sport, upcoming_after=after,
+                                        offered_only=not args.all_statuses, limit=args.limit))
+        elif args.history_command == "lines":
+            _emit(queries.line_history(con, args.game_key))
+        elif args.history_command == "find":
+            _emit(queries.find_games(con, args.text))
+        else:
+            _emit(queries.capture_health(con, args.since))
+        return EXIT_OK
+    finally:
+        con.close()
+
+
+def cmd_models(args, paths: Paths) -> int:
+    from . import db
+    from .db import models
+
+    con = db.open_database(paths)
+    try:
+        if args.models_command == "list":
+            _emit(models.current_releases(con, args.sport))
+        elif args.models_command == "show":
+            _emit(models.release_detail(con, args.release_id))
+        elif args.models_command == "attribution":
+            _emit(models.attribution_summary(con))
+        else:
+            result = models.verify_artifacts(con, release_id=args.release_id)
+            _emit(result)
+            return EXIT_OK if result["all_verified"] else EXIT_CHECK_FAILED
+        return EXIT_OK
+    finally:
+        con.close()
+
+
+# -- parser ------------------------------------------------------------------
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="python -m gambling",
+                                     description="Five-sport Gambling history, Bovada capture and rolling SQLite ledger")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    init = commands.add_parser("init", help="Extract the read-only frozen snapshot from the bundled ZIP")
+    init.add_argument("--force", action="store_true", help="Re-extract the frozen snapshot")
+    init.set_defaults(handler=cmd_init)
+
+    commands.add_parser("audit", help="Count frozen records and verify integrity").set_defaults(handler=cmd_audit)
+
+    for name in ("scores", "replay"):  # `replay` kept as the original name
+        score = commands.add_parser(name, help="Show frozen production/research score rows for a historical date")
+        score.add_argument("--date", default="2026-11-11")
+        score.add_argument("--batch", help="Explicit original capture batch ID")
+        score.set_defaults(handler=cmd_scores)
+
+    parlay = commands.add_parser("parlays", help="Inspect archived research-only theoretical parlays")
+    parlay.add_argument("--date", default="2026-11-11")
+    parlay.add_argument("--limit", type=int, default=8)
+    parlay.set_defaults(handler=cmd_parlays)
+
+    grab = commands.add_parser("fetch", help="Capture Bovada main-market odds to files (read-only)")
+    grab.add_argument("--sports", help="Comma list of NFL,NCAAFB,NBA,NCAABB,NHL (default: all)")
+    grab.add_argument("--out", help="Capture root directory (default: <data>/captures)")
+    grab.add_argument("--max-age", type=int, default=900, help="Reject CDN responses older than N seconds")
+    grab.add_argument("--first-ok", action="store_true", help="Stop at the first usable URL variant per sport")
+    grab.add_argument("--no-recover", action="store_true", help="Skip event-page recovery of incomplete games")
+    grab.add_argument("--replay", metavar="RUN_DIR", help="Rebuild a captured run offline instead of fetching")
+    grab.set_defaults(handler=cmd_fetch)
+
+    database = commands.add_parser("db", help="Rolling SQLite database")
+    db_commands = database.add_subparsers(dest="db_command", required=True)
+    db_commands.add_parser("init", help="Create/upgrade the database and import the frozen archive once")
+    db_commands.add_parser("status", help="Migrations, imports, counts and integrity")
+    db_commands.add_parser("export", help="Write a new point-in-time archive ZIP")
+    database.set_defaults(handler=cmd_db)
+
+    ingest = commands.add_parser("ingest", help="Load capture JSON files into the rolling database")
+    ingest.add_argument("run_dirs", nargs="*", help="Capture run directories")
+    ingest.add_argument("--all", action="store_true", help="Also ingest every not-yet-ingested capture")
+    ingest.set_defaults(handler=cmd_ingest)
+
+    history = commands.add_parser("history", help="Query the rolling history")
+    h_commands = history.add_subparsers(dest="history_command", required=True)
+    latest = h_commands.add_parser("latest", help="Newest observed price per upcoming game/market/side")
+    latest.add_argument("--sport")
+    latest.add_argument("--limit", type=int, default=500)
+    latest.add_argument("--include-started", action="store_true", help="Include games already started")
+    latest.add_argument("--all-statuses", action="store_true", help="Include suspended/not offered sides")
+    lines = h_commands.add_parser("lines", help="Line movement for one game")
+    lines.add_argument("game_key", help="e.g. NBA:BOVADA:33233970 (see `history find`)")
+    find = h_commands.add_parser("find", help="Find game keys by team or matchup text")
+    find.add_argument("text")
+    health = h_commands.add_parser("health", help="Bovada fetch reliability by day and sport")
+    health.add_argument("--since", help="UTC date YYYY-MM-DD")
+    history.set_defaults(handler=cmd_history)
+
+    registry = commands.add_parser("models", help="Model release registry")
+    m_commands = registry.add_subparsers(dest="models_command", required=True)
+    listing = m_commands.add_parser("list", help="Every release with its current role and authorization")
+    listing.add_argument("--sport")
+    show = m_commands.add_parser("show", help="One release: status history, files, legacy labels, predictions")
+    show.add_argument("release_id")
+    verify = m_commands.add_parser("verify", help="Re-hash every registered model file")
+    verify.add_argument("release_id", nargs="?")
+    m_commands.add_parser("attribution", help="How recorded scores map to releases; duplicates collapsed")
+    registry.set_defaults(handler=cmd_models)
+    return parser
+
+
+def main(argv: list[str] | None = None, paths: Paths | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    return args.handler(args, paths or default_paths())
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,6 @@
+# Archived evidence and test fixtures must stay byte-identical (hashes are recorded).
+data/** -text
+legacy_models/** -text
+legacy_ops/** -text
+tests/fixtures/** -text
+gambling/db/migrations/*.sql -text

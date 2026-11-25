@@ -1,0 +1,84 @@
+# Migration roadmap — reproducibility before automation
+
+## Phase 0 — complete in this export
+
+- Carry forward the November 11 authoritative rolling-history snapshot.
+- Import the original five-sport model source packages as *legacy reference*
+  code, without promoting or silently refitting any model.
+- Audit 28 capture batches, 1,156 events, 6,936 quotes, 10,173 scores, and 148
+  matched settled games; reproduce November 11 production-score classification.
+- Preserve the 88 hypothetical same-cohort parlays as research-only observations.
+- Provide a CLI and automated audit regression tests.
+
+## Phase 1 — stable price ingestion (core done 2026-11-11)
+
+Done: date-independent Bovada client (`gambling/bovada/`), URL-variant ladder
+for the CDN stale-cache failure, response classification, retries/backoff,
+per-market parsing with explicit states, event-page recovery, append-only raw
+captures with checksums, `Date − Age` snapshot times, `fetch --replay`, golden
+tests against archived NFL/NBA payloads and fault-injection tests.
+
+Also done: package cleanup into importable modules (`config`, `odds`,
+`timeutil`, `history`, `db`, thin `cli`), and the persistent rolling SQLite
+history — hashed numbered migrations, one-time verified import of the frozen
+archive, `ingest` of capture JSON (raw bodies stay as files, verified by
+sha256), append-only triggers, line-movement / latest-price / fetch-health
+views, and point-in-time exports.
+
+Remaining:
+- Cross-check each board against an independent schedule (ESPN) so games the
+  book never listed are labelled `NOT_LISTED_BY_BOOK` rather than invisible.
+- Optional re-sweep to tighten cross-sport skew under the 120 s cohort rule.
+- A versioned normalization view mapping legacy `side`/`game_key`/status
+  conventions onto the current vocabulary (legacy rows stay as recorded).
+- `legacy_ops/fetch_nov11_*.py` are kept as archived evidence; do not use them.
+
+## Phase 2 — one model adapter at a time
+
+Model registry done (2026-11-11): 18 releases registered with artifact hashes,
+role/authority history and mappings for all 29 legacy labels; every archived
+score is attributed. Releases marked `PARTIAL` / `ARTIFACTS_MISSING` keep their
+archived predictions but cannot make new ones until rebuilt as a *new* release
+that reproduces the archived outputs (NCAAFB V2 is likely rebuildable from
+`authority.json`). NBA R3 and the NHL challengers are candidates for retirement.
+
+For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
+
+1. Register the release and its artifact hashes; record feature cutoffs and train/validation boundaries.
+2. Refactor the existing source into a uniform `score(game, odds, state)` contract.
+3. Compare exact known-game Model P, tier, EV, and Full/Adjusted Kelly against
+   golden outputs for several archived cohorts.
+4. Fail closed on missing features; preserve Pass ledger and blocker reasons.
+5. Only then enable daily scoring for that sport; no automatic refits/promotions.
+
+## Phase 3 — results and accounts
+
+- Daily ESPN finals imported separately from raw Bovada bets.
+- Immutable odds snapshots; append game result events; calculate hypothetical
+  market outcomes but never equate them to money won or lost.
+- Import user-account wagers using unique transaction IDs, wager legs and
+  settlements; reconcile cashback, casino/poker, and manual adjustments.
+- Produce original tier as of recommendation and tier under current model
+  separately, including unmatched and unverifiable recommendations.
+
+## Phase 4 — independent parlay research and bonus ledger
+
+Exact sportsbook multi-leg quote required. Same-day, distinct-game legs only.
+Measure realized out-of-sample log growth and both bonus objectives after real
+qualification and account rules have been verified. The model stays research
+only until proper promotion criteria are satisfied.
+
+## Phase 5 — optional interface
+
+Only after the core CLI is reliable, add a lightweight local dashboard. A
+Streamlit interface is a practical option; a server or cloud deployment is not
+necessary for the initial workflow.
+
+## Completion conditions
+
+The migration replaces ChatGPT operational scoring when one reproducible
+command performs: capture today's odds, score all available games with the
+frozen champion and challenger, flag new vs previous bets, log passes and
+missing inputs, attach yesterday's finals, update historical ledgers, calculate
+research parlays, and export the chronological bet sheet—without manual data
+repairs and without a chat history dependency.
