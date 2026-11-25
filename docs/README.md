@@ -14,3 +14,7 @@ Before merging a behavior change, update the relevant docs, golden test fixtures
 
 - `handoff/README.md`: complete Claude Code onboarding and collaboration protocol, with current state, five-sport authority, bet sheets, P&L, parlays, bonuses and open gaps.
 - `research/README.md`: dated ChatGPT model research decisions and Claude implementation handback records.
+
+- `handoff/MODEL_TRANSFER_AUDIT_2026-11-24.md`: read-only primary-source release inventory and sport-specific porting blockers.
+- `handoff/LOCAL_INPUT_INVENTORY_2026-11-24.md`: hashes, coverage and quality issues of six ChatGPT-side NCAAFB attachments (not in Git).
+- `handoff/CLAUDE_MODEL_TRANSFER_RUNBOOK.md`: implementation checklist and collaboration procedure for the transfer.
