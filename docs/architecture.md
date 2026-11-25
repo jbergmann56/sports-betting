@@ -37,3 +37,13 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 ## Non-Git data
 
 `.local_archive/` is for verified local-only copies of nonessential material; files in that directory are ignored and **do not travel with a Git clone**. Personal exports and accounts require separately encrypted/offline backup. See `docs/cleanup-inventory.md`.
+
+## Implemented shared scoring and bet-sheet layers (2026-11-25)
+
+- `gambling/core/quotes.py` — `QuoteSide` (selection-oriented lines), long-capture reader, `complete_board` (explicit `NOT_OFFERED` sides).
+- `gambling/models/base.py` — adapter contract v2 (`SCORED`, `CONDITIONAL_SCORED`, `EVALUATED`, `NOT_EVALUATED_BY_MODEL`, `UNSCORED`, `BLOCKED`); v1 positional construction unchanged.
+- `gambling/scoring/pricing.py` — push-aware EV / Full Kelly with basis and null reasons; Adjusted Kelly pass-through only.
+- `gambling/scoring/sheet.py` — assembly (quote side × release), labelled complements, registry authority at quote time, chronological sort, new-vs-previous.
+- `gambling/betsheets/export.py` — all-rows CSV and Excel workbook.
+
+Dependency direction: adapters → `ScoreRow`; `scoring` reads `ScoreRow` + `QuoteSide` + registry; `betsheets` reads assembled rows. No layer below `scoring` assigns tier, EV or authorization. See `docs/betsheets/shared-contract.md` for column semantics.
