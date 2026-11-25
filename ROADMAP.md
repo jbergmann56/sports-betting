@@ -116,3 +116,16 @@ Historical provenance, immutable original score/authorization and unknown accoun
 - [ ] Execute per-release historical parity and model checksum checks in Claude's development checkout; this ChatGPT audit inspected sources but did not execute five sport runners.
 - [ ] Implement the certified shared scoring interface and first live adapter **without changing frozen model outputs**.
 - [ ] Reconcile current-season chronology, exact quotes, original tiers, score statuses and all-rows bet-sheet exports.
+
+## Executed transfer parity (2026-11-24, Claude Code)
+
+See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and the companion `2026-11-24-release-readiness-inventory.csv`.
+
+- [x] Run per-release frozen replays with unchanged scorers: NFL Nov 10 (in-repo), NBA R4 Nov 12, NCAAFB Nov 2, NCAABB V4 Nov 1 and NHL Day-0 Nov 12 reproduce archived outputs exactly; NBA Oct 29 reference does **not** match (research question Q1).
+- [x] Identify environment pin: NCAABB V4 binary requires scikit-learn 1.8.0.
+- [ ] B1–B4: external-input storage and hash manifest, model environment pin, golden replay harness, readiness CLI.
+- [ ] B5–B7: `ScoreRow` v2, shared scoring, all-rows bet-sheet writer.
+- [ ] Sport adapters in order NFL → NHL → NCAAFB → NBA → NCAABB, each with golden parity.
+- [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
+
+No model was refit, re-tiered or promoted; no wager authorization changed.
