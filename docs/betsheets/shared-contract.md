@@ -54,3 +54,7 @@ A release that models a binary win probability is `SCORED` with `p_push=0` on ha
 A sheet has one row per quoted side × each release **registered for that side's market**. Where champion and challenger differ by market (NHL: Day-0 ML/PL/OU champions with ML V3 / PL V1 / V15 challengers), the sport builder passes `assemble(..., market_releases={market: (champion, challenger)})`. A moneyline quote is therefore never paired with a puck-line release. Sports with one release pair across all markets (NFL) omit the argument, and their behaviour is unchanged. A release with no adapter row for one of its own market's quotes is still emitted, as `UNSCORED` / `NO_ADAPTER_ROW_FOR_QUOTE`.
 
 When a release supplies its own push probability (NHL Day-0 totals on integer lines), the row is `SCORED` with `push_probability_status=MODEL`, and EV and Full Kelly use it. This is in contrast to `CONDITIONAL_SCORED` (push unknown).
+
+### Single-release markets and one-sided rules (2026-11-25, NCAAFB)
+
+A market may have one shared release instead of a champion/challenger pair. NCAAFB moneyline and totals are such components, used by both spread configurations; the adapter asserts that both configurations' columns are identical before emitting one row per side. Rules that evaluate only one side emit `NOT_EVALUATED_BY_MODEL` for the other side, with the rule as reason (`RULE_EVALUATES_UNDERDOG_ONLY`, `RULE_EVALUATES_UNDER_ONLY`, `RULE_EVALUATES_HIGHER_SLOPE_SIDE_ONLY`). A rule that evaluated its side and passed is `EVALUATED` with the recorded reason.
