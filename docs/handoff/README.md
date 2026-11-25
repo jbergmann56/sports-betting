@@ -58,3 +58,8 @@ Read every document above; run the repository unit tests and frozen audit; inspe
 - `CLAUDE_MODEL_TRANSFER_RUNBOOK.md`: explicit commands, artifact-recovery gates, one-adapter-at-a-time implementation and ChatGPT research handback.
 
 These supplement, rather than override, the existing architecture, recorded authorities and research decisions. The NCAAFB raw files are **not committed or available to Claude merely because hashes are documented**.
+
+## Executed parity and readiness (Claude Code, November 24, 2026)
+
+- `docs/research/implementations/2026-11-24-model-transfer-readiness.md`: executed frozen replays for all five sports, readiness per release, contract gaps, prioritized backlog and research questions Q1–Q6.
+- `docs/research/implementations/2026-11-24-release-readiness-inventory.csv`: runbook Step 1 machine-readable inventory.
