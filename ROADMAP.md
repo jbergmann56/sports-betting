@@ -130,7 +130,9 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [x] NFL frozen-replay adapter (REV2-CAL + W8) with golden parity and 72/72 archived-row match; complete 144-row bet sheet.
 - [x] NHL Day-0 frozen adapter (ML/PL/OU champions + V3/PL V1/V15 challengers) with golden parity: 132/132 archived rows, original 81 PASS / 44 UNSCORED / 7 RESEARCH_POSITIVE_EV split, model push probability on integer totals; no release wager-authorized.
 - [x] NCAAFB Week 8+ frozen adapter (spread PP-V2 champion / continuous-V1 challenger, shared ML rule, shared OU research rule) with golden parity on the Nov 2 board: 186/186 archived tiers, probabilities, EV and Full Kelly unchanged; fresh scorer rerun identical within 1e-9; 496-row sheet with 6 PRODUCTION_QUALIFIED (registry-authorized) rows.
-- [ ] Remaining adapters in order NBA → NCAABB, each with golden parity.
+- [x] NBA R4 (V27) frozen adapter with golden parity on Nov 12: 12/12 archived rows (tier, P, EV, Full Kelly, shadow portfolio Adjusted Kelly) unchanged; rerun identical within 1e-9; scorer quote JSON rebuilt byte-identically from the capture; R3 challenger BLOCKED (artifacts missing); 48-row sheet, 2 PRODUCTION_QUALIFIED spreads.
+- [ ] Remaining adapter: NCAABB, with golden parity.
+- [ ] NBA live use: automated completed-results source (scorer rejects history >7 days stale; Nov 6–11 finals were manual), R3 artifacts or retirement decision, Oct 29 pipeline (research Q1); reconcile Nov 6–11 user-database NBA batches.
 - [ ] NCAAFB live use: weekly pregame features, posterior/quadrature refresh decision, published SRS gate source, results ingestion; reconcile Nov 6–10 `model_scores` batches in the user database against this adapter.
 - [ ] NHL live use: control-file refresh decision (frozen through 2025), V15/PL V1 inputs, ChatGPT evaluation of Day-0 edge.
 - [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.

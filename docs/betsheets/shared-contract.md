@@ -58,3 +58,7 @@ When a release supplies its own push probability (NHL Day-0 totals on integer li
 ### Single-release markets and one-sided rules (2026-11-25, NCAAFB)
 
 A market may have one shared release instead of a champion/challenger pair. NCAAFB moneyline and totals are such components, used by both spread configurations; the adapter asserts that both configurations' columns are identical before emitting one row per side. Rules that evaluate only one side emit `NOT_EVALUATED_BY_MODEL` for the other side, with the rule as reason (`RULE_EVALUATES_UNDERDOG_ONLY`, `RULE_EVALUATES_UNDER_ONLY`, `RULE_EVALUATES_HIGHER_SLOPE_SIDE_ONLY`). A rule that evaluated its side and passed is `EVALUATED` with the recorded reason.
+
+### Registered releases without artifacts (2026-11-25, NBA R3)
+
+A release that is registered for the sport but whose artifacts are missing still gets one row per quote. These rows have `model_status=BLOCKED`, a reason that starts with `ARTIFACTS_MISSING`, and no probability. The champion/challenger view therefore shows the missing challenger explicitly. No stand-in probability is ever reconstructed for it.
