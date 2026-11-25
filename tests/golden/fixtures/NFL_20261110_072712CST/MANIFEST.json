@@ -1,0 +1,133 @@
+{
+  "fixture_id": "NFL_20261110_072712CST",
+  "sport": "NFL",
+  "slate": "2026-11-10 capture (Week 10 board)",
+  "release_ids": [
+    "NFL_REV2_CAL_20261024",
+    "NFL_W8_FULL_SLOPE_20261026"
+  ],
+  "frozen_zip_prefix": "NFL_20261110_072712CST/",
+  "scorer_files": [
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/board.json",
+      "sha256": "a50f9b918e5f378678e83762423301fadad089d5a0f854d78f07dcc5ef160d7b",
+      "bytes": 744
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/metadata.json",
+      "sha256": "88e2f6adc9237304c7f29bd88e7d693e4a2b2d7c8b901464ff14a915bd0bd69e",
+      "bytes": 670
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/data/champion_config_preserved.json",
+      "sha256": "eba7e74904c17f0695f31afdc8965bf4d7de90b81f74e68def87332a46c05506",
+      "bytes": 60689
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/results/primary2018__reconstructed__frozen_models.json",
+      "sha256": "326e78b15462bcd00c38182356a86eb659bea7a8a374510abe5e63a1675dc8bc",
+      "bytes": 141479
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/analyze.py",
+      "sha256": "c31a63eaa1b8b0f09558868c8ab32bd892254c0a85b748d902d2ddfbad7a2653",
+      "bytes": 17976
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/apply_calibration.py",
+      "sha256": "65e39b94780e32c148c631baabf7d1f0a3e32edeb9448f0f1690d785bc81b97d",
+      "bytes": 1659
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/champion_context.py",
+      "sha256": "9f78dbb6f66663294413bc9697990f900d9ee49d8fae49b23d81b253ea683324",
+      "bytes": 1848
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/core.py",
+      "sha256": "997e8b0d704b099644b8b2367fc854eaca365558f7b6351604471825f5791e88",
+      "bytes": 7652
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/production_calibration.py",
+      "sha256": "ae07d6a896b595a0815d8b23882dbf527af690b6d5402751ac5ff2131c0e275b",
+      "bytes": 2792
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/reconstruction.py",
+      "sha256": "73a23cbed718eb1ddf9572d520b838eba5b2fdce9e1c6a5625b0dcb4a0af428b",
+      "bytes": 2013
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/model/src/segments.py",
+      "sha256": "641829bcff9d707cfcaaa947df8d599a95b6ab3e5f47d39eb77b857bf32f05d8",
+      "bytes": 4779
+    },
+    {
+      "location": "zip:data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip!NFL_20261110_072712CST/scoring/score.py",
+      "sha256": "6fe3e0e4ec92567c72c263a95bbccf30fbac42bfd6d78d33b7e662d4c054d74b",
+      "bytes": 6069
+    },
+    {
+      "location": "legacy_models/nfl/analyze.py",
+      "sha256": "c31a63eaa1b8b0f09558868c8ab32bd892254c0a85b748d902d2ddfbad7a2653",
+      "bytes": 17976
+    },
+    {
+      "location": "legacy_models/nfl/apply_calibration.py",
+      "sha256": "65e39b94780e32c148c631baabf7d1f0a3e32edeb9448f0f1690d785bc81b97d",
+      "bytes": 1659
+    },
+    {
+      "location": "legacy_models/nfl/champion_context.py",
+      "sha256": "9f78dbb6f66663294413bc9697990f900d9ee49d8fae49b23d81b253ea683324",
+      "bytes": 1848
+    },
+    {
+      "location": "legacy_models/nfl/core.py",
+      "sha256": "997e8b0d704b099644b8b2367fc854eaca365558f7b6351604471825f5791e88",
+      "bytes": 7652
+    },
+    {
+      "location": "legacy_models/nfl/production_calibration.py",
+      "sha256": "ae07d6a896b595a0815d8b23882dbf527af690b6d5402751ac5ff2131c0e275b",
+      "bytes": 2792
+    },
+    {
+      "location": "legacy_models/nfl/reconstruction.py",
+      "sha256": "73a23cbed718eb1ddf9572d520b838eba5b2fdce9e1c6a5625b0dcb4a0af428b",
+      "bytes": 2013
+    },
+    {
+      "location": "legacy_models/nfl/segments.py",
+      "sha256": "641829bcff9d707cfcaaa947df8d599a95b6ab3e5f47d39eb77b857bf32f05d8",
+      "bytes": 4779
+    }
+  ],
+  "expected_rows": {
+    "dual_model_bet_sheet.csv": 36,
+    "both_side_inputs.csv": 72,
+    "team_features.csv": 32
+  },
+  "provenance": "All inputs, scorer and expected outputs are members of the committed frozen ZIP; expected outputs are copied from the ZIP before the scorer runs.",
+  "comparison": "dual_model_bet_sheet.csv, both_side_inputs.csv, team_features.csv",
+  "environment": {
+    "python": "3.13.18",
+    "scikit-learn": "1.8.0",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "lock_file": "requirements-models.txt",
+    "verified_utc": "2026-11-25",
+    "also_passes": "NFL/NHL/NCAAFB/NBA also verified with numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1"
+  },
+  "inputs": [],
+  "expected": [],
+  "frozen_zip": {
+    "path": "data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip",
+    "sha256": "a6ab7b0a36a0bedf6c55a769396034208b1fc98fe83edf4e6ced00b81effa9e1"
+  },
+  "comparison_rule": "row count and column list equal; numeric |diff| <= 1e-9 with identical NaN positions; other columns equal as strings",
+  "model_changes": "NONE - unchanged archived scorer; no refit, recalibration, re-tier or promotion"
+}

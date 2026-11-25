@@ -1,0 +1,13 @@
+# Model/replay environment for the archived sport scorers (golden replay fixtures).
+# The core `gambling` package stays standard-library only; install these only to run
+# legacy scorers, adapters and tests/golden. Versions are the ones verified on
+# 2026-11-25 to reproduce all five golden fixtures exactly (Python 3.13.18).
+#
+# scikit-learn is pinned because NCAABB_V4_PRODUCTION_CANDIDATE.joblib was pickled
+# with 1.8.0; scikit-learn 1.9.1 fails to unpickle it (ModuleNotFoundError: _loss).
+scikit-learn==1.8.0
+numpy==2.5.5
+pandas==3.1.1
+scipy==1.18.1
+joblib==1.6.0
+openpyxl>=3.1

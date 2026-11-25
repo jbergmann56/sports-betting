@@ -1,0 +1,150 @@
+{
+  "fixture_id": "NCAAFB_20261102",
+  "sport": "NCAAFB",
+  "slate": "2026-11-02 Week 10 (62 games / 186 markets)",
+  "release_ids": [
+    "NCAAFB_SPREAD_PP_V2_20261028",
+    "NCAAFB_SPREAD_CONTINUOUS_V1_20261023",
+    "NCAAFB_ML_W8PLUS_RULE",
+    "NCAAFB_OU_RESEARCH"
+  ],
+  "scorer_files": [
+    {
+      "location": "legacy_models/ncaafb/build_features.py",
+      "sha256": "d729d72f3778c76381414153c3c6540ca08e19681ca41178ea1d8905994228a0",
+      "bytes": 4135
+    },
+    {
+      "location": "legacy_models/ncaafb/score_both.py",
+      "sha256": "e9fde3457c18085d830ab637c81f8f0458d4ffaf248d8775fa7884736fa81400",
+      "bytes": 6445
+    },
+    {
+      "location": "legacy_models/ncaafb/authority.json",
+      "sha256": "9e5e0678171b31fc595a72d8396aa5437259545b1ba044fb0446dddf36fb96bb",
+      "bytes": 5120
+    }
+  ],
+  "expected_rows": {
+    "ALL_62_GAMES_BOTH_MODEL_TIERS.csv": 186,
+    "features_weeks8_10.csv": 174
+  },
+  "provenance": "Inputs from the reproducibility package nov02_production_feature_rebuild/inputs plus results/oct27_scoreboard.json; inputs/authority.json is byte-identical to legacy_models/ncaafb/authority.json.",
+  "comparison": "every CSV written to results/ by build_features.py and score_both.py",
+  "environment": {
+    "python": "3.13.18",
+    "scikit-learn": "1.8.0",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "joblib": "1.6.0",
+    "lock_file": "requirements-models.txt",
+    "verified_utc": "2026-11-25",
+    "also_passes": "NFL/NHL/NCAAFB/NBA also verified with numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1"
+  },
+  "inputs": [
+    {
+      "path": "inputs/authority.json",
+      "sha256": "9e5e0678171b31fc595a72d8396aa5437259545b1ba044fb0446dddf36fb96bb",
+      "bytes": 5120
+    },
+    {
+      "path": "inputs/evidence/replay.py",
+      "sha256": "f968eb53dd311a51a2d22fa12b544a57bf9adae26d0fe89bfe62de750959c015",
+      "bytes": 4405
+    },
+    {
+      "path": "inputs/evidence/schedule2026.csv.gz",
+      "sha256": "31ef4731014670b960fb2a270734c20c1409876d7c816e850daaba30254ba167",
+      "bytes": 83110
+    },
+    {
+      "path": "inputs/finals_week8.csv",
+      "sha256": "900ab9ea443db5eeee364f0ae2a39354edae262bbbd09d5a80e678eb0c5f4483",
+      "bytes": 9992
+    },
+    {
+      "path": "inputs/finals_week9.csv",
+      "sha256": "91f9eefbf7a5949d467fc63995fd43ab384956141928fbf3ca8afed94b00ca82",
+      "bytes": 10859
+    },
+    {
+      "path": "inputs/oct27_scoreboard.json",
+      "sha256": "c4af6618470d10b27945ea5e4793353497011dc3c622504d3e9788a32cc51277",
+      "bytes": 31467
+    },
+    {
+      "path": "inputs/posterior_quadrature.csv",
+      "sha256": "2779e0f259236df43ecd446ba139236006997bfa0cc8d0c24cf2c6faf79828c4",
+      "bytes": 869819
+    },
+    {
+      "path": "inputs/prior_features.csv",
+      "sha256": "65a7d18c2a168632e196eb4a49898f83b6b6d42cb98fe6d04ddac7af7d60b058",
+      "bytes": 16660
+    },
+    {
+      "path": "inputs/quoted_lines.csv",
+      "sha256": "0e77a87655d353cf35fc5e88cc2d7f9ab3ca27b58f2f83977f9da2bb857818d0",
+      "bytes": 8099
+    },
+    {
+      "path": "inputs/raw_bovada_response.json",
+      "sha256": "e75585d7471dbe453a67abe09b927274d7171c8ed63e4503bde2d26b60c4c1c9",
+      "bytes": 168423
+    }
+  ],
+  "expected": [
+    {
+      "path": "expected/ALL_62_GAMES_BOTH_MODEL_TIERS.csv",
+      "sha256": "cc2585b14081675478675785f0305e8feebdce3da18b69bded6f5943f9692a78",
+      "bytes": 91318
+    },
+    {
+      "path": "expected/CURRENT_PRICED_FEATURES.csv",
+      "sha256": "4e4c9755278f357cc3c4636c3947cd13db24eeb9c059d11f58643b8abfc7612f",
+      "bytes": 13376
+    },
+    {
+      "path": "expected/POSITIVE_EV_BOTH_MODEL_TIERS.csv",
+      "sha256": "269f98a62c260d0313b01da94fab6c2557552ce13bfe6cbefceb2421f6b04dd0",
+      "bytes": 8869
+    },
+    {
+      "path": "expected/feature_parity.csv",
+      "sha256": "30267e6274361329914e329837594d3746c67e1f3a4be98ae69d14be38b10d85",
+      "bytes": 7484
+    },
+    {
+      "path": "expected/features_weeks8_10.csv",
+      "sha256": "e56d44fa2b226f0998170d0d97fb9cb27b65194364788564902133b79aa2cead",
+      "bytes": 48207
+    },
+    {
+      "path": "expected/published_srs_gates.csv",
+      "sha256": "8c9f39465592030f10519e9386830bce066b19043f26b07eb81e02867febe291",
+      "bytes": 741
+    },
+    {
+      "path": "expected/result_update_provenance.csv",
+      "sha256": "3d7da55fff4a5e92277ec9e3d61bfc94a0d9fe05df123ce4cabbc6b78cf14142",
+      "bytes": 15349
+    },
+    {
+      "path": "expected/updated_schedule2026.csv",
+      "sha256": "d7016aef5fb02af1ef30624a64fe7cb977f216cddf5a857f3088cb35e72f16fa",
+      "bytes": 181051
+    },
+    {
+      "path": "expected/weekly_ratings.csv",
+      "sha256": "7e02f1acfaeefcbacabaf98ec55787b36166030fc61d0330573061be6f69ada3",
+      "bytes": 25930
+    }
+  ],
+  "frozen_zip": {
+    "path": "data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip",
+    "sha256": "a6ab7b0a36a0bedf6c55a769396034208b1fc98fe83edf4e6ced00b81effa9e1"
+  },
+  "comparison_rule": "row count and column list equal; numeric |diff| <= 1e-9 with identical NaN positions; other columns equal as strings",
+  "model_changes": "NONE - unchanged archived scorer; no refit, recalibration, re-tier or promotion"
+}
