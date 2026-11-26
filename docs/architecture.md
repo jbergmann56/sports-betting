@@ -40,6 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/accounts/cleanse.py` — DQ-01…DQ-12 cleanse inside the accounts database: rule log, hard gates to the cent, canonical tables written only on PASS (migration `0002_cleanse`).
 - `gambling/accounts/importer.py` — raw import into the separate accounts database (own migrations in `gambling/accounts/migrations/`): verbatim files/pages, every transaction version and sighting, coverage windows, verbatim P&L baseline. Refuses `gambling.sqlite`.
 - `gambling/accounts/exports.py` — read-only pre-import profile of the Bovada exporter output (`*_pages.jsonl` as source; coverage, gaps, duplicates, balance chain, baseline reconciliation). Account data goes to a separate database, never `gambling.sqlite`.
 - `gambling/reconcile/` — read-only replay of recorded `model_scores` batches through the frozen adapters with inputs rebuilt from the database (NHL, NBA); named history variants document explained differences.

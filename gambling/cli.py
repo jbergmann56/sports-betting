@@ -212,6 +212,22 @@ def cmd_accounts(args, paths: Paths) -> int:
     folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
     if not folder.is_dir():
         raise FileNotFoundError(f"{folder} not found")
+    if args.accounts_command == "cleanse":
+        from .accounts.cleanse import run_cleanse
+        db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
+        scores = Path(args.scoring_db) if args.scoring_db else None
+        r = run_cleanse(db, scoring_db=scores)
+        failed = [k for k, v in r["gates"].items() if not k.startswith("_") and not v["pass"]]
+        print(f"DQ run {r['run_id']}: {r['status']}  fingerprint {r['fingerprint'][:16]}")
+        print(f"  wagers {r['wagers']}  open {r['open_wagers']}  adjustments {r['adjustments']}  exclusions "
+              f"{r['exclusions']}  non-sports {r['non_sports']}  links {r['links']}")
+        print(f"  issues by rule: {r['issues_by_rule']}")
+        for k, v in r["gates"].items():
+            if not k.startswith("_"):
+                print(f"  [{'PASS' if v['pass'] else 'FAIL'}] {k}: {v['actual']} (expected {v['expected']})")
+        if failed:
+            print("No canonical rows written; see dq_issues for this run.")
+        return 0 if not failed else 1
     if args.accounts_command == "import":
         from .accounts.importer import ImportRefused, import_exports
         db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
@@ -359,6 +375,9 @@ def build_parser() -> argparse.ArgumentParser:
     imp.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite (copied verbatim)")
     imp.add_argument("--since", help="coverage assessment start, as for profile")
     imp.add_argument("--db", help="accounts database (default <data>/accounts/accounts.sqlite; never gambling.sqlite)")
+    cl = a_commands.add_parser("cleanse", help="DQ-01..DQ-12 cleanse of the accounts DB raw layer (gated, append-only)")
+    cl.add_argument("--db", help="accounts database (default <data>/accounts/accounts.sqlite)")
+    cl.add_argument("--scoring-db", help="optional gambling.sqlite to reconcile score ids (DQ-10), opened read-only")
     accounts.set_defaults(handler=cmd_accounts)
     return parser
 

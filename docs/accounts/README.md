@@ -3,7 +3,7 @@
 **Status (2026-11-26):**
 - Step 1 (profile) has run on the user PC and is import-ready. It reports 2,233 transactions with no gaps from Sep 20 to Nov 24, and **Sep 2–20 NOT_COVERED**.
 - Step 2 (raw import) is implemented and verified on synthetic exports and on the real P&L baseline. It has not yet run on the real exports.
-- Step 3 (DQ cleanse) is next.
+- Step 3 (DQ cleanse) is implemented (`python -m gambling accounts cleanse`). All hard gates pass to the cent on the real P&L baseline (raw exports synthetic in that check). It has not yet run on the real exports.
 
 ## Rules (user, 2026-11-25)
 
@@ -70,8 +70,33 @@ Rules:
 - **One baseline:** a different baseline file is a conflict.
 - **Append-only:** every table rejects UPDATE and DELETE.
 
-## Step 3 (next)
-**Cleanse** with DQ-01…DQ-12 (`claude/IMPLEMENTATION_PLAN.md`) into canonical tables:
-   - every transformation logged in `dq_issues`;
-   - hard gates on totals and row conservation;
-   - wager → score links kept only by key, across the two databases.
+## Step 3: DQ-01…DQ-12 cleanse (`gambling/accounts/cleanse.py`, migration `0002_cleanse`)
+
+```
+python -m gambling accounts cleanse [--db data/accounts/accounts.sqlite] [--scoring-db data/gambling.sqlite]
+```
+
+Input is the raw layer only: `pnl_baseline_*` and `latest_transactions`, which are never changed. Each run writes a `dq_runs` row (gates, summary, fingerprint) and every rule hit to `dq_issues` (raw value, cleansed value, action, evidence). Canonical `c_*` rows are written under the run id **only if every gate passes**. The views `wagers`, `open_wagers`, `accounting_adjustments`, `accounting_exclusions`, `non_sports_ledger` and `wager_links` read the latest PASSED run. All tables are append-only. A rerun on the same raw layer gives the same fingerprint.
+
+| Rule | What it does |
+|---|---|
+| DQ-01 | "Settled — aggregate only" rows → `accounting_adjustments` (AGGREGATE_SETTLEMENT); kept in account totals, not ticket counts |
+| DQ-02 | Win/Loss/Push → WIN/LOSS/PUSH; Push/Void → VOID only with void/cancel/refund text in the matched raw transactions, else PUSH (logged) |
+| DQ-03 | Missing odds: raw API price, else back-solved for wins (must reproduce P&L to the cent), else UNRECOVERABLE; never imputed for losses |
+| DQ-04 | Key = Bovada reference; raw match by reference in any field, else unique time (±60 s) + wallet delta = −stake; else synthetic `WB-` key |
+| DQ-05 | UTC + precision; `.999` artifacts → next minute; placement time checked against the raw placement debit. A Chicago-local time labelled UTC is corrected from raw and logged; other disagreements are flagged, not changed |
+| DQ-06 | Puck line → Spread; Grand Salami/Parlay/Prop out of model scope; direction from selection (Over/Under or team vs matchup) |
+| DQ-07 | Away/home parsed; `game_key` crosswalk pending (logged) |
+| DQ-08 | Non-sports key = Bovada id, else composite; collisions fail a gate |
+| DQ-09 | Score links resolved to settled or open tickets; kept only if placement ≥ quote |
+| DQ-10 | Optional score-id reconciliation against `gambling.sqlite` (read-only); the scoring DB stays authoritative |
+| DQ-11 | Original frozen tier / pre-bet evidence kept apart from retrospective champion tier |
+| DQ-12 | Upstream-excluded duplicate recorded; prior unallocated adjustment kept undated |
+
+Hard gates: stake, itemized, prior, sportsbook account, casino, poker, bonus and all-gambling P&L equal the baseline metadata to the cent; 683 settled rows conserved; ticket arithmetic (LOSS = −stake, PUSH/VOID = 0, WIN = payout ±1 cent); unique keys; no key collisions; cash movements recognize 0; open tickets not also settled; every link resolves.
+
+### Verification on the real baseline (2026-11-26, raw exports synthetic)
+- PASSED. Stake 2,174,294; itemized −265,277; prior −13,012; sportsbook account −278,289; casino −50,968; poker −8,486; bonus 250,013; all-gambling −87,730 (cents).
+- 660 tickets + 23 aggregate adjustments = 683. All 23 odds-missing wins back-solved exactly; 37 odds stay UNRECOVERABLE (36 losses, 1 push). 382 directions derived; 3 unresolved (1 parlay, 1 prop, 1 spread).
+- **Finding:** for 166 evidence links (all "New" cohort), `scored_utc + scored_seconds_before_bet` lands exactly **+6.00 h** after the baseline `placed_at_utc`. Either those placement times are Chicago local time labelled as UTC, or the gap field is off by the offset. The raw placement debits decide it on the real import (DQ-05). Until then those links are dropped as `DROPPED_PLACED_BEFORE_QUOTE_TIME_UNVERIFIED` (238 dropped in total, 54 of them for unknown wagers).
+- DQ-10 against the live scoring DB: 60 score ids only in the export, 289 only in the database. Export-only scores are not imported.
