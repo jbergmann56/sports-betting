@@ -194,6 +194,25 @@ def cmd_results(args, paths: Paths) -> int:
         con.close()
 
 
+def cmd_accounts(args, paths: Paths) -> int:
+    """Pre-import profile of Bovada account exports (read-only; nothing is imported)."""
+    from .accounts import exports
+    from .config import PACKAGE_ROOT
+
+    folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
+    if not folder.is_dir():
+        raise FileNotFoundError(f"{folder} not found")
+    report = exports.profile_exports(folder, Path(args.baseline) if args.baseline else None, args.since)
+    out = Path(args.out) if args.out else paths.data_dir / "accounts" / "reports"
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = report["generated_utc"][:19].replace(":", "").replace("-", "")
+    (out / f"export_profile_{stamp}.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    (out / f"export_profile_{stamp}.md").write_text(exports.markdown(report), encoding="utf-8")
+    print(exports.markdown(report))
+    print(f"Written: {out / f'export_profile_{stamp}.md'} (+ .json)")
+    return EXIT_OK if report["import_ready"] else EXIT_CHECK_FAILED
+
+
 def cmd_reconcile(args, paths: Paths) -> int:
     """Replay recorded batches through the frozen adapters (read-only)."""
     import sqlite3
@@ -306,6 +325,15 @@ def build_parser() -> argparse.ArgumentParser:
     reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])
     reconcile.add_argument("--batch", action="append", help="batch_id (repeatable); default every recorded batch")
     reconcile.set_defaults(handler=cmd_reconcile)
+
+    accounts = commands.add_parser("accounts", help="Bovada account exports (read-only profile; import comes after review)")
+    a_commands = accounts.add_subparsers(dest="accounts_command", required=True)
+    prof = a_commands.add_parser("profile", help="Coverage, counts, missing periods, duplicates, balance chain")
+    prof.add_argument("--export-dir", help="default bovada_transactions/bovada_export")
+    prof.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite to reconcile wagers against")
+    prof.add_argument("--since", help="assess coverage from this date (e.g. 2026-09-02); earlier gaps reported")
+    prof.add_argument("--out", help="report folder (default <data>/accounts/reports, outside Git)")
+    accounts.set_defaults(handler=cmd_accounts)
     return parser
 
 

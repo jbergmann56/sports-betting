@@ -64,6 +64,8 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
   - [ ] Data-quality finding for ChatGPT review: the frozen NBA history uses both "Los Angeles Clippers" (through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so V27 features split the team. Not changed (frozen evidence).
 - Immutable odds snapshots; append game result events; calculate hypothetical
   market outcomes but never equate them to money won or lost.
+- [x] 2026-11-25: pre-import profile of the Bovada exports (`python -m gambling accounts profile`, `docs/accounts/README.md`): coverage from complete runs only, NOT_COVERED gaps (never zero), counts, duplicates and changed versions, balance chain, P&L baseline reconciliation. Read-only.
+- [ ] Run the profile on the user PC and review the report; then import into the separate `data/accounts/accounts.sqlite` (raw pages verbatim, coverage windows), then DQ-01…DQ-12 cleanse.
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model
