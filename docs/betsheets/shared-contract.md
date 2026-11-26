@@ -62,3 +62,7 @@ A market may have one shared release instead of a champion/challenger pair. NCAA
 ### Registered releases without artifacts (2026-11-25, NBA R3)
 
 A release that is registered for the sport but whose artifacts are missing still gets one row per quote. These rows have `model_status=BLOCKED`, a reason that starts with `ARTIFACTS_MISSING`, and no probability. The champion/challenger view therefore shows the missing challenger explicitly. No stand-in probability is ever reconstructed for it.
+
+### Recorded eligibility flags (2026-11-25, NCAABB)
+
+When a release records its own pre-bet eligibility decision (NCAABB V4 `stake_eligible`), `action_class` follows that flag: eligible means QUALIFIED. The model's tier label stays in `original_tier` and may differ (V4 marks some "Lean" rows eligible). The adapter never re-tiers. A difference between flag and label is documented in the sport file for review.

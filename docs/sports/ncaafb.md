@@ -33,6 +33,8 @@ Regression sheet: `tests/fixtures/betsheets/NCAAFB_20261102_betsheet.csv` (SHA-2
 
 PRODUCTION_QUALIFIED records the original pre-bet authorization as registered. It is not a recommendation to bet, and this app places no wagers.
 
+**Parser refactor (2026-11-25, NCAABB PR):** the Bovada coupon parsing moved to the shared `gambling/core/bovada.py`. `quotes_from_bovada` keeps its signature, and the NCAAFB regression sheet is byte-identical.
+
 **Reference:** the user database holds NCAAFB `model_scores` for Nov 6–10 but none for Nov 2, so the fixture's archived output is the reference. Reconciling the Nov 9/10 `PROJECT_RULES` / `ALL_QUOTES` batches against this adapter is a follow-up.
 
 ## Required model audit

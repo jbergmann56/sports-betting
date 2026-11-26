@@ -234,6 +234,12 @@ class StoreTests(unittest.TestCase):
                                                 "t", "rerun"))  # nothing new, nothing written
         self.assertTrue(self.s.verify_version(v1)["lossless"])
 
+    def test_append_requires_a_registered_run(self):
+        self._master()
+        with self.assertRaisesRegex(ModelDataError, "not registered"):
+            self.s.append_records("ncaabb/master", [self.rec("7", "2026-11-07T18:00:00Z", "")], "t", "x",
+                                  run_id="never-registered")
+
     def test_append_rejects_schema_drift(self):
         self._master()
         with self.assertRaisesRegex(ModelDataError, "schema change"):
