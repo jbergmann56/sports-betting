@@ -139,3 +139,15 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
 No model was refit, re-tiered or promoted; no wager authorization changed.
+
+## Model-input store (SQLite) — 2026-11-25
+
+MySQL/Azure dropped by user decision ("we are using sqlite in the project").
+
+- [x] M0: migration `0006_model_data` in `gambling/db/migrations`, applied by the existing migrator into `data/gambling.sqlite`. `md_*` tables reuse `model_releases` (no second registry), link runs to `capture_batches` / `quote_cohorts` / `model_scores`, carry `game_key` on rows. Importer for CSV/CSV.gz/Parquet/JSON/blob, time-safe retrieval, run pins, account/wager column guard, snapshot with SHA-256, CLI. All five golden fixtures replay identically from inputs materialized from a copy of the history database; the 19 pre-existing tables are byte-for-byte unchanged (`docs/model-data/README.md`).
+- [x] Growing masters: `ncaabb/master` (base FULL + APPEND chain keyed by `game_id`, `produced_by_run`, supersede-by-key, as-of reads); the master stays in the live database per user decision. Wiring into the NCAABB daily run comes with the NCAABB adapter.
+- [x] M1a: 0006 + master + golden import verified on a copy of the real `data/gambling.sqlite` (SHA-256 `ef84f3a0…`; 32 / 10,158 / 10,173); 18 existing tables unchanged; 5/5 PASSED (`docs/model-data/M1-verification-2026-11-25.md`).
+- [ ] M1b: migrate the live file on the PC after a verified offline backup.
+- [ ] M2: read-only import of capture history, ESPN finals and recovered feature inputs, keyed by `game_key`.
+- [ ] M3: dual-run period: frozen outputs remain authoritative.
+- [ ] M4: independent validation and recorded authority decision.

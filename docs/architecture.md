@@ -49,3 +49,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 - `gambling/scoring/sheet.Authority.from_connection(con)` — registry authority from an open connection (sport sheet builders, tests on a temporary migrated database).
 
 Dependency direction: adapters → `ScoreRow`; `scoring` reads `ScoreRow` + `QuoteSide` + registry; `betsheets` reads assembled rows. No layer below `scoring` assigns tier, EV or authorization. See `docs/betsheets/shared-contract.md` for column semantics.
+
+## Model-input database (2026-11-25)
+
+`gambling/modeldata/` — versioned, append-only store for model inputs, in the same SQLite file as the rolling history (`data/gambling.sqlite`, migration `0006_model_data`, `md_*` tables): immutable source files by SHA-256, dataset versions with lossless rows and status events, time-safe retrieval, run input pins, column guard that rejects account/wager exports. It builds on the existing model: runs reference `model_releases`, link to `capture_batches`, `quote_cohorts` and `model_scores`, and rows carry `game_key`. Existing tables are not altered. Sportsbook account data stays out (separate accounts database). See `docs/model-data/README.md`.

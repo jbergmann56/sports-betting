@@ -44,3 +44,18 @@ jobs:
         run: python -m pip install -r requirements-models.txt
       - name: Golden replay fixtures
         run: python -m unittest tests.test_golden_replay -v
+
+  modeldata:
+    # Model-input store (migration 0006 in the rolling SQLite history) and golden-from-database proof.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned model environment
+        run: python -m pip install -r requirements-models.txt pyarrow
+      - name: Model-data tests and golden-from-database proof
+        run: python -m unittest tests.test_modeldata -v
