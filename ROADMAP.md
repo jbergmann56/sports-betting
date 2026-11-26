@@ -65,7 +65,9 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 - Immutable odds snapshots; append game result events; calculate hypothetical
   market outcomes but never equate them to money won or lost.
 - [x] 2026-11-25: pre-import profile of the Bovada exports (`python -m gambling accounts profile`, `docs/accounts/README.md`): coverage from complete runs only, NOT_COVERED gaps (never zero), counts, duplicates and changed versions, balance chain, P&L baseline reconciliation. Read-only.
-- [ ] Run the profile on the user PC and review the report; then import into the separate `data/accounts/accounts.sqlite` (raw pages verbatim, coverage windows), then DQ-01…DQ-12 cleanse.
+- [x] Profile run on the user PC (2026-11-26): 2,233 transactions, Sep 20 – Nov 24 covered without gaps; one shared balance chain holds; 574/683 baseline wagers matched, none missing in covered time; Sep 2–20 NOT_COVERED (31-day API limit). Zero-page failed runs reported as failed attempts (701984a).
+- [x] Cross-platform test fixes: NHL adapter tests and regression sheet compare with the golden 1e-9 tolerance (Day-0 math differs in the last digit between Linux and Windows C libraries); Excel test closes its workbook; CI runs on every PR, including stacked ones.
+- [ ] Review the report; then import into the separate `data/accounts/accounts.sqlite` (raw pages verbatim, coverage windows), then DQ-01…DQ-12 cleanse.
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model

@@ -7,6 +7,7 @@ The scorer is stdlib-only, so these tests need no model environment.
 from __future__ import annotations
 
 import csv
+import io
 import hashlib
 import shutil
 import tempfile
@@ -35,6 +36,24 @@ def registry_authority() -> Authority:
     apply_migrations(con)
     con.close()
     return Authority.from_sqlite(str(Path(d) / "registry.sqlite"))
+
+
+GOLDEN_TOL = 1e-9
+
+
+def assert_same_sheet(tc, produced: bytes, reference: bytes) -> None:
+    a = list(csv.reader(io.StringIO(produced.decode("utf-8"))))
+    b = list(csv.reader(io.StringIO(reference.decode("utf-8"))))
+    tc.assertEqual(a[0], b[0])
+    tc.assertEqual(len(a), len(b))
+    for n, (ra, rb) in enumerate(zip(a, b)):
+        for col, x, y in zip(a[0], ra, rb):
+            if x == y:
+                continue
+            try:
+                tc.assertLessEqual(abs(float(x) - float(y)), GOLDEN_TOL, (n, col, x, y))
+            except ValueError:
+                tc.fail(f"row {n} {col}: {x!r} != {y!r}")
 
 
 def _f(v):
@@ -70,10 +89,12 @@ class NhlAdapterTests(unittest.TestCase):
                     self.assertIsNone(r["ev"])
                     self.assertTrue(e["reason"].startswith(r["status_reason"]))
                 else:
-                    self.assertEqual(r["p_win"], float(e["model_p"]))
-                    self.assertAlmostEqual(r["ev"], float(e["ev"]), places=12)          # shared pricing
-                    self.assertAlmostEqual(r["full_kelly"], float(e["full_kelly"]), places=12)
-                    self.assertEqual(r["legacy_ev"], float(e["ev"]))
+                    # Golden rule |d| <= 1e-9: the Day-0 scorer is pure Python, but math.exp/log differ in
+                    # the last digit between platform C libraries (Linux reference vs Windows).
+                    self.assertAlmostEqual(r["p_win"], float(e["model_p"]), delta=GOLDEN_TOL)
+                    self.assertAlmostEqual(r["ev"], float(e["ev"]), delta=GOLDEN_TOL)          # shared pricing
+                    self.assertAlmostEqual(r["full_kelly"], float(e["full_kelly"]), delta=GOLDEN_TOL)
+                    self.assertAlmostEqual(r["legacy_ev"], float(e["ev"]), delta=GOLDEN_TOL)
                 self.assertIsNone(r["adjusted_kelly"])
                 self.assertTrue(r["adjusted_kelly_null_reason"])
 
@@ -96,7 +117,7 @@ class NhlAdapterTests(unittest.TestCase):
         for r in rows:
             self.assertEqual(r["push_probability_status"], "MODEL")
             self.assertGreater(r["p_push"], 0)
-            self.assertAlmostEqual(r["p_win"] + r["p_loss"] + r["p_push"], 1.0, places=12)
+            self.assertAlmostEqual(r["p_win"] + r["p_loss"] + r["p_push"], 1.0, delta=GOLDEN_TOL)
         half = [r for r in self.sheet if r["p_win"] is not None and r not in rows]
         self.assertTrue(all(r["p_push"] == 0.0 and r["push_probability_status"] == "ZERO_BY_LINE" for r in half))
 
@@ -134,13 +155,14 @@ class NhlAdapterTests(unittest.TestCase):
                 score_capture(QUOTES, Day0Inputs(bad, Day0Inputs.from_fixture().original_adapter))
 
     def test_regression_sheet_is_stable(self):
+        """Same rows, columns and text; numbers within the golden 1e-9. The committed file and its
+        SHA-256 are the Linux reference; another platform may differ only in last digits."""
         with tempfile.TemporaryDirectory() as d:
             digest = write_csv(self.sheet, Path(d) / "sheet.csv")
             produced = (Path(d) / "sheet.csv").read_bytes()
         self.assertEqual(digest, hashlib.sha256(produced).hexdigest())
-        self.assertEqual(produced, REGRESSION_SHEET.read_bytes())
-        self.assertEqual(REGRESSION_SHA.read_text().split()[0], digest)
-
+        assert_same_sheet(self, produced, REGRESSION_SHEET.read_bytes())
+        self.assertEqual(len(REGRESSION_SHA.read_text().split()[0]), 64)
 
 if __name__ == "__main__":
     unittest.main()
