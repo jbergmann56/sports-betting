@@ -54,6 +54,12 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 ## Phase 3 — results and accounts
 
 - Daily ESPN finals imported separately from raw Bovada bets.
+  - [x] 2026-11-25: ESPN scoreboard collector for all five sports (`gambling/results/espn.py`, migration `0007_espn_results`, `python -m gambling results fetch|conflicts|nba-history`). Raw responses are kept with URL, request date, retrieval time and SHA-256; every event is observed; finals are recorded once in `official_game_results` and never overwritten (differences go to `espn_result_conflicts`). NBA history feed writes base + ESPN finals to a new file and blocks on team names the base never used. 0007 verified on a copy of the real database (31 existing tables unchanged).
+  - [x] Reconciliation: the user database's 15 NBA finals (Nov 8–9) agree with the manually transcribed R4 history; the one key mismatch is the Clippers name (below).
+  - [x] First live fetch on the user PC (2026-11-25, NBA 2026-11-24): 3 events, 3 finals recorded, 0 conflicts. This applied 0006 + 0007 to the live `data/gambling.sqlite` (backup `data/archives/gambling.sqlite.pre-0006-0007.20261125.bak`). Migrations 0001–0007 are now frozen (`tests/test_migration_freeze.py`).
+  - [x] 0008 `espn_result_retrievals`: a re-fetch that returns identical bytes records only the retrieval, not another full capture.
+  - [ ] Daily scheduled fetch (all sports, previous day) on the user PC.
+  - [ ] Data-quality finding for ChatGPT review: the frozen NBA history uses both "Los Angeles Clippers" (through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so V27 features split the team. Not changed (frozen evidence).
 - Immutable odds snapshots; append game result events; calculate hypothetical
   market outcomes but never equate them to money won or lost.
 - Import user-account wagers using unique transaction IDs, wager legs and

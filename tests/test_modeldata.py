@@ -42,7 +42,7 @@ class StoreTests(unittest.TestCase):
     def test_tables_come_from_the_shared_migrator(self):
         self.assertEqual(self.s.migrate(), [])
         names = [r[0] for r in self.s.fetchall("SELECT name FROM schema_migrations ORDER BY version")]
-        self.assertEqual(names[-1], "model_data")
+        self.assertIn("model_data", names)  # 0006; later migrations (0007 ESPN results) follow
         tables = {r[0] for r in self.s.fetchall("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertNotIn("schema_versions", tables)  # no second migration system
         self.assertIn("md_source_files", tables)

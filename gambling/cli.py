@@ -156,6 +156,44 @@ def cmd_models(args, paths: Paths) -> int:
         con.close()
 
 
+def cmd_results(args, paths: Paths) -> int:
+    """ESPN results: fetch (network, user machine), conflicts, NBA history feed."""
+    from datetime import date, timedelta
+    from . import db
+    from .results import espn
+
+    con = db.open_database(paths)
+    try:
+        if args.results_command == "fetch":
+            start = date.fromisoformat(args.date)
+            end = date.fromisoformat(args.through) if args.through else start
+            days = [(start + timedelta(n)).isoformat() for n in range((end - start).days + 1)]
+            out = []
+            for sport in args.sport:
+                try:
+                    out += espn.collect(con, sport, days)
+                except (OSError, espn.ResultsError, ValueError) as exc:
+                    out.append({"sport": sport, "status": "ERROR", "error": str(exc)})
+            _emit(out)
+            return EXIT_FETCH_INCOMPLETE if any(r.get("status") == "ERROR" for r in out) else EXIT_OK
+        if args.results_command == "conflicts":
+            rows = con.execute("SELECT * FROM espn_result_conflicts ORDER BY conflict_id").fetchall()
+            _emit([dict(r) for r in rows])
+            return EXIT_CHECK_FAILED if rows else EXIT_OK
+        feed = espn.nba_history_rows(con, Path(args.base), args.through)
+        if feed["unknown_teams"] and not args.allow_new_names:
+            _emit({**{k: v for k, v in feed.items() if k != "rows"}, "new_rows": len(feed["rows"]),
+                   "status": "BLOCKED: team names not in the base history; review before scoring "
+                             "(--allow-new-names to write anyway)"})
+            return EXIT_CHECK_FAILED
+        digest = espn.write_nba_history(Path(args.base), feed["rows"], Path(args.out))
+        _emit({"out": args.out, "sha256": digest, "new_rows": len(feed["rows"]), "base_last_date": feed["base_last_date"],
+               "unknown_teams": feed["unknown_teams"], "duplicates": feed["duplicates"]})
+        return EXIT_OK
+    finally:
+        con.close()
+
+
 # -- parser ------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -226,6 +264,20 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("release_id", nargs="?")
     m_commands.add_parser("attribution", help="How recorded scores map to releases; duplicates collapsed")
     registry.set_defaults(handler=cmd_models)
+
+    results = commands.add_parser("results", help="ESPN finals: capture, record, NBA history feed (read-only)")
+    r_commands = results.add_subparsers(dest="results_command", required=True)
+    rf = r_commands.add_parser("fetch", help="Capture ESPN scoreboards and record new finals")
+    rf.add_argument("--sport", action="append", required=True, choices=["NBA", "NHL", "NFL", "NCAAFB", "NCAABB"])
+    rf.add_argument("--date", required=True, help="Scoreboard date YYYY-MM-DD")
+    rf.add_argument("--through", help="Last date (inclusive) for a range")
+    r_commands.add_parser("conflicts", help="Observed finals that differ from recorded ones (exit 1 if any)")
+    nh = r_commands.add_parser("nba-history", help="Write base NBA history + new ESPN finals to a NEW file")
+    nh.add_argument("--base", required=True)
+    nh.add_argument("--through", required=True, help="Last game date to include (the day before the slate)")
+    nh.add_argument("--out", required=True)
+    nh.add_argument("--allow-new-names", action="store_true")
+    results.set_defaults(handler=cmd_results)
     return parser
 
 

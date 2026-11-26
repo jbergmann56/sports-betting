@@ -22,8 +22,13 @@
 - **Quotes:** `quotes_json_from_capture` rebuilds the scorer's 12-field JSON from the Nov 12 capture `quotes.csv` (batch `20261112T134056Z_68f7ec`, stored once in the NHL fixture) using the archived builder's rules. It matches the archived input byte-for-byte, so every row carries the capture's Bovada price id and timestamp. The scorer's own label `USER_BOVADA_UNTIMESTAMPED` is kept in diagnostics.
 - **Nov 12 sheet:** 48 rows (4 games × 6 sides × R4/R3). Two rows are PRODUCTION_QUALIFIED: Washington +10.5 and Toronto +9.0 (Spread B, EV +0.042, Full Kelly 0.0464, portfolio Adjusted Kelly 0.0463 each). Ten are PASS; R3 is BLOCKED on all 24 of its rows. Regression sheet: `tests/fixtures/betsheets/NBA_R4_20261112_betsheet.csv` (SHA-256 `495ed026…`).
 
+**Results feed (2026-11-25):** `python -m gambling results fetch --sport NBA --date D` records ESPN finals. Then `python -m gambling results nba-history --base <history.csv> --through <slate−1> --out <new.csv>` writes the base history plus the new finals to a new file, which the unchanged scorer can read with `--history`.
+- **Unknown names:** the feed stops on team names the base never used, unless `--allow-new-names` is passed.
+- **Checked against the database:** the database's 15 NBA finals for Nov 8–9 match the manual history.
+- **Data-quality finding (not changed):** the frozen history uses both "Los Angeles Clippers" (2018 through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so the V27 features treat them as two teams. Any change belongs to ChatGPT research and a new release; this frozen release is not altered.
+
 **Before live use:**
-- An automated completed-results feed. The scorer rejects history more than 7 days stale, and the Nov 6–11 finals were transcribed manually (PR #4 decision 5).
+- An automated completed-results feed. (Done: ESPN collector, above; first live fetch pending on the user PC.) The scorer rejects history more than 7 days stale, and the Nov 6–11 finals were transcribed manually (PR #4 decision 5).
 - A decision to either recover the R3 artifacts or retire R3.
 - The Oct 29 pipeline remains unresolved (research Q1).
 - The user database has R4/R3 batches for Nov 6–11 but not Nov 12; reconciling them is a follow-up.
