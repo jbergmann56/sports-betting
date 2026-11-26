@@ -1,6 +1,9 @@
 # Account data: Bovada exports → separate accounts database
 
-**Status (2026-11-25):** step 1 of 3 implemented. The pre-import profile is ready; the import waits until the user has reviewed it.
+**Status (2026-11-26):**
+- Step 1 (profile) has run on the user PC and is import-ready. It reports 2,233 transactions with no gaps from Sep 20 to Nov 24, and **Sep 2–20 NOT_COVERED**.
+- Step 2 (raw import) is implemented and verified on synthetic exports and on the real P&L baseline. It has not yet run on the real exports.
+- Step 3 (DQ cleanse) is next.
 
 ## Rules (user, 2026-11-25)
 
@@ -40,13 +43,35 @@ The report is printed and written as `.md` and `.json` to `data/accounts/reports
 - every item has an id;
 - one balance grouping has no unexplained breaks.
 
-## Steps 2–3 (after review)
+## Step 2: raw import (`gambling/accounts/importer.py`)
 
-2. **Import** into `data/accounts/accounts.sqlite`, a separate file:
-   - verbatim raw pages and transactions, append-only and keyed by Bovada id, with every version kept;
-   - coverage windows recorded as their own rows, so reports can mark unknown periods;
-   - the P&L baseline as frozen rows.
-3. **Cleanse** with DQ-01…DQ-12 (`claude/IMPLEMENTATION_PLAN.md`) into canonical tables:
+```
+python -m gambling accounts import [--export-dir DIR] [--baseline gambling_pnl_2026-11-10.sqlite] [--since 2026-09-02] [--db PATH]
+```
+
+The default target is `data/accounts/accounts.sqlite`, a separate file outside Git with its own migrations (`gambling/accounts/migrations/`). The import refuses to write to `gambling.sqlite`.
+
+| Table | Content |
+|---|---|
+| `import_runs` | Each import: tool, the full profile it was gated on, counts |
+| `export_runs` / `export_files` | Each exporter run, and its four files as verbatim bytes plus SHA-256 |
+| `raw_pages` | Every line of `_pages.jsonl`, verbatim |
+| `raw_transactions` | Every **distinct version** of a transaction: (id, content hash), canonical JSON, money as received strings |
+| `transaction_sightings` | Every place each version was seen (run, line, position) |
+| `coverage_windows` | `covers=1` only for complete runs; failed attempts are kept with `covers=0` |
+| `latest_transactions` (view) | The latest version of each id |
+| `pnl_baseline_<table>` + `pnl_baseline_imports` | All 16 tables of the P&L baseline, copied verbatim (verified row-for-row on the real file; sportsbook P&L −265,277 / stake 2,174,294 cents) |
+
+Rules:
+- **Gated:** the import refuses unless the profile is import-ready.
+- **Atomic:** the whole import is one transaction.
+- **Idempotent:** re-importing the same files adds nothing.
+- **Immutable once imported:** changed files for an imported run are a conflict.
+- **One baseline:** a different baseline file is a conflict.
+- **Append-only:** every table rejects UPDATE and DELETE.
+
+## Step 3 (next)
+**Cleanse** with DQ-01…DQ-12 (`claude/IMPLEMENTATION_PLAN.md`) into canonical tables:
    - every transformation logged in `dq_issues`;
    - hard gates on totals and row conservation;
    - wager → score links kept only by key, across the two databases.

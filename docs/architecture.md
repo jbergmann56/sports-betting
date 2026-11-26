@@ -40,6 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/accounts/importer.py` — raw import into the separate accounts database (own migrations in `gambling/accounts/migrations/`): verbatim files/pages, every transaction version and sighting, coverage windows, verbatim P&L baseline. Refuses `gambling.sqlite`.
 - `gambling/accounts/exports.py` — read-only pre-import profile of the Bovada exporter output (`*_pages.jsonl` as source; coverage, gaps, duplicates, balance chain, baseline reconciliation). Account data goes to a separate database, never `gambling.sqlite`.
 - `gambling/reconcile/` — read-only replay of recorded `model_scores` batches through the frozen adapters with inputs rebuilt from the database (NHL, NBA); named history variants document explained differences.
 - `gambling/results/espn.py` — ESPN scoreboard collector (migration 0007): raw captures, per-event observations, first final recorded in `official_game_results` and never overwritten (later differences go to `espn_result_conflicts`); identical re-fetches recorded as retrievals only (0008); NBA history feed for the R4 scorer. The network fetch runs on the user machine.

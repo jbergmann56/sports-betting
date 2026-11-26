@@ -205,13 +205,24 @@ def _print_text(text: str) -> None:
 
 
 def cmd_accounts(args, paths: Paths) -> int:
-    """Pre-import profile of Bovada account exports (read-only; nothing is imported)."""
+    """Bovada account exports: read-only profile, or import into the SEPARATE accounts database."""
     from .accounts import exports
     from .config import PACKAGE_ROOT
 
     folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
     if not folder.is_dir():
         raise FileNotFoundError(f"{folder} not found")
+    if args.accounts_command == "import":
+        from .accounts.importer import ImportRefused, import_exports
+        db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
+        try:
+            result = import_exports(db, folder, Path(args.baseline) if args.baseline else None,
+                                    scoring_db=paths.database, since=args.since)
+        except ImportRefused as exc:
+            _emit({"status": "REFUSED", "reason": str(exc)})
+            return EXIT_CHECK_FAILED
+        _emit({"status": "IMPORTED", "database": str(db), **result})
+        return EXIT_OK
     report = exports.profile_exports(folder, Path(args.baseline) if args.baseline else None, args.since)
     out = Path(args.out) if args.out else paths.data_dir / "accounts" / "reports"
     out.mkdir(parents=True, exist_ok=True)
@@ -343,6 +354,11 @@ def build_parser() -> argparse.ArgumentParser:
     prof.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite to reconcile wagers against")
     prof.add_argument("--since", help="assess coverage from this date (e.g. 2026-09-02); earlier gaps reported")
     prof.add_argument("--out", help="report folder (default <data>/accounts/reports, outside Git)")
+    imp = a_commands.add_parser("import", help="Import raw exports (+ P&L baseline) into data/accounts/accounts.sqlite")
+    imp.add_argument("--export-dir", help="default bovada_transactions/bovada_export")
+    imp.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite (copied verbatim)")
+    imp.add_argument("--since", help="coverage assessment start, as for profile")
+    imp.add_argument("--db", help="accounts database (default <data>/accounts/accounts.sqlite; never gambling.sqlite)")
     accounts.set_defaults(handler=cmd_accounts)
     return parser
 
