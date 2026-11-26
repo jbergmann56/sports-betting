@@ -40,6 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/results/espn.py` — ESPN scoreboard collector (migration 0007): raw captures, per-event observations, first final recorded in `official_game_results` and never overwritten (later differences go to `espn_result_conflicts`), NBA history feed for the R4 scorer. The network fetch runs on the user machine.
 - `gambling/core/bovada.py` — parser for archived Bovada coupon responses (main full-game Spread/Moneyline/Total, outcome price IDs as `quote_id`, `NOT_PREGAME` when captured at or after the start); shared by NCAAFB and NCAABB.
 - `gambling/core/quotes.py` — `QuoteSide` (selection-oriented lines), long-capture reader, `complete_board` (explicit `NOT_OFFERED` sides).
 - `gambling/models/base.py` — adapter contract v2 (`SCORED`, `CONDITIONAL_SCORED`, `EVALUATED`, `NOT_EVALUATED_BY_MODEL`, `UNSCORED`, `BLOCKED`); v1 positional construction unchanged.

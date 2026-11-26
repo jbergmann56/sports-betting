@@ -1,7 +1,8 @@
-"""Game schedules and finals (ESPN scoreboard/summary, SportsDataverse releases).
+"""Game results.
 
-Plan Phase 2. Raw responses are saved like Bovada captures (URL, captured_utc,
-sha256) before parsing; parsed finals load into ``official_game_results``.
-Games on the schedule but absent from the book board are labelled
-``NOT_LISTED_BY_BOOK``. Not implemented yet.
+``espn``: ESPN scoreboard collector for all five sports. Raw responses are stored with URL,
+request date, retrieval time and SHA-256 (``espn_result_captures``, migration 0007), every
+event is observed, and completed games are recorded once in ``official_game_results``;
+differing later observations go to ``espn_result_conflicts``. ``nba_history_rows`` turns
+recorded NBA finals into rows for the frozen R4 scorer's history file.
 """
