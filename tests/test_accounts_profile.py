@@ -107,6 +107,45 @@ class ProfileTests(unittest.TestCase):
         (self.dir / f"{stem}_pages.jsonl").unlink()
         r = exports.profile_exports(self.dir)
         self.assertEqual(r["runs"][0]["status"], "NOT_USABLE")
+        self.assertEqual(r["coverage"]["partial_or_unusable_runs"], [stem])
+        self.assertFalse(r["import_ready"])
+
+    def test_failed_attempt_with_no_data_does_not_block_import(self):
+        write_run(self.dir, T0, T0 + timedelta(days=5), [[item(1, T0 + timedelta(days=1), "-10", "90")]])
+        stem = f"bovada_transactions_{T0:%Y-%m-%d}_to_{T0 + timedelta(days=9):%Y-%m-%d}"
+        (self.dir / f"{stem}_run.json").write_text(json.dumps({
+            "started_at_utc": (T0 + timedelta(days=9)).isoformat(), "created_at_from": "2026-10-01T00:00:00.000Z",
+            "pages": [], "stopped_because": "error: the browser was closed before the transactions page loaded",
+            "finished_at_utc": (T0 + timedelta(days=9, seconds=10)).isoformat()}))
+        r = exports.profile_exports(self.dir)
+        failed = next(x for x in r["runs"] if x["stem"] == stem)
+        self.assertEqual(failed["status"], "FAILED_NO_DATA")
+        self.assertEqual(r["coverage"]["failed_attempts_no_data"], [stem])
+        self.assertEqual(r["coverage"]["partial_or_unusable_runs"], [])
+        # the failed window adds no coverage: only the complete run's window counts
+        self.assertEqual(len(r["coverage"]["covered_utc"]), 1)
+        self.assertTrue(r["coverage"]["covered_utc"][0][1].startswith("2026-10-06"))
+        self.assertTrue(r["import_ready"])
+        self.assertIn("failed attempt, no data received", exports.markdown(r))
+
+    def test_run_log_with_pages_but_no_pages_file_still_blocks(self):
+        stem = write_run(self.dir, T0, T0 + timedelta(days=3), [[item(1, T0 + timedelta(days=1), "-1", "9")]],
+                         stopped="error: HTTP 500")
+        (self.dir / f"{stem}_pages.jsonl").unlink()
+        r = exports.profile_exports(self.dir)
+        self.assertEqual(r["runs"][0]["status"], "NOT_USABLE")
+        self.assertFalse(r["import_ready"])
+
+    def test_cli_print_survives_console_that_cannot_encode(self):
+        import io
+        from contextlib import redirect_stdout
+        from gambling.cli import _print_text
+        buf = io.BytesIO()
+        cp1252 = io.TextIOWrapper(buf, encoding="cp1252")
+        with redirect_stdout(cp1252):
+            _print_text("covered: a → b")
+        cp1252.flush()
+        self.assertEqual(buf.getvalue().decode("cp1252").strip(), "covered: a ? b")
 
     def test_category_specific_balances_detected(self):
         write_run(self.dir, T0, T0 + timedelta(days=5), [[
@@ -142,7 +181,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(main(["accounts", "profile", "--export-dir", str(self.dir)], Paths(data)), 0)
         reports = list((data / "accounts" / "reports").glob("export_profile_*.md"))
         self.assertEqual(len(reports), 1)
-        self.assertIn("Import ready:** True", reports[0].read_text())
+        self.assertIn("Import ready:** True", reports[0].read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

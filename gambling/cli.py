@@ -194,6 +194,16 @@ def cmd_results(args, paths: Paths) -> int:
         con.close()
 
 
+def _print_text(text: str) -> None:
+    """Print text, substituting characters the console cannot encode (e.g. '→' on a Windows cp1252 console).
+    Report files are always written as UTF-8; this only affects what the terminal shows."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(enc, errors="replace").decode(enc))
+
+
 def cmd_accounts(args, paths: Paths) -> int:
     """Pre-import profile of Bovada account exports (read-only; nothing is imported)."""
     from .accounts import exports
@@ -208,8 +218,8 @@ def cmd_accounts(args, paths: Paths) -> int:
     stamp = report["generated_utc"][:19].replace(":", "").replace("-", "")
     (out / f"export_profile_{stamp}.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     (out / f"export_profile_{stamp}.md").write_text(exports.markdown(report), encoding="utf-8")
-    print(exports.markdown(report))
-    print(f"Written: {out / f'export_profile_{stamp}.md'} (+ .json)")
+    _print_text(exports.markdown(report))
+    _print_text(f"Written: {out / f'export_profile_{stamp}.md'} (+ .json)")
     return EXIT_OK if report["import_ready"] else EXIT_CHECK_FAILED
 
 

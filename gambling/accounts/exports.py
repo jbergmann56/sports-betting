@@ -128,6 +128,16 @@ def load_run(rf: RunFiles) -> dict:
     if not rf.run:
         rep["issues"].append("RUN_LOG_MISSING")
     if not rf.pages:
+        stopped = log.get("stopped_because")
+        if rf.run and not log.get("pages") and stopped and stopped != COMPLETE:
+            # The exporter failed before receiving any page (session expired, browser closed, HTTP error).
+            # Nothing was fetched, so there is no missing source; the attempt covers nothing.
+            rep["issues"].append(f"FAILED_ATTEMPT_NO_DATA: {stopped}")
+            rep.update({"created_at_from": log.get("created_at_from"), "started_at_utc": log.get("started_at_utc"),
+                        "finished_at_utc": log.get("finished_at_utc"), "stopped_because": stopped,
+                        "complete": False, "pages": 0, "raw_items": 0, "unique_ids": 0, "items_without_id": 0,
+                        "status": "FAILED_NO_DATA"})
+            return rep | {"items": []}
         rep["issues"].append("PAGES_MISSING: no original source; derived files are not used as a substitute")
         rep["status"] = "NOT_USABLE"
         return rep | {"items": []}
@@ -299,7 +309,8 @@ def profile_exports(folder: Path, baseline: Optional[Path] = None, since: Option
         "runs": [{k: v for k, v in r.items() if k != "items"} for r in runs],
         "coverage": {
             "complete_runs": sum(r.get("status") == "COMPLETE" for r in runs),
-            "partial_or_unusable_runs": [r["stem"] for r in runs if r.get("status") != "COMPLETE"],
+            "partial_or_unusable_runs": [r["stem"] for r in runs if r.get("status") not in ("COMPLETE", "FAILED_NO_DATA")],
+            "failed_attempts_no_data": [r["stem"] for r in runs if r.get("status") == "FAILED_NO_DATA"],
             "covered_utc": [[a.isoformat(), b.isoformat()] for a, b in covered],
             "not_covered_utc": [[a.isoformat(), b.isoformat(), str(b - a)] for a, b in gaps if b > a],
             "assessed_from_utc": start.isoformat() if start else None,
@@ -351,6 +362,8 @@ def markdown(report: dict) -> str:
     lines += ["", "## Coverage (complete runs only)", ""]
     lines += [f"- covered: {a} → {b}" for a, b in c["covered_utc"]] or ["- none"]
     lines += [f"- **NOT COVERED** (activity unknown, not zero): {a} → {b} ({d})" for a, b, d in c["not_covered_utc"]] or ["- no gaps between covered windows"]
+    lines += [f"- failed attempt, no data received (covers nothing; does not block import): {s}"
+              for s in c.get("failed_attempts_no_data", [])]
     lines += ["", "## Counts", ""] + [f"- {k}: {v}" for k, v in n.items()]
     lines += ["", "## Balance chain", ""]
     for grouping in ("per_currency", "per_category_and_currency"):
