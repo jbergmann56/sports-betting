@@ -194,6 +194,29 @@ def cmd_results(args, paths: Paths) -> int:
         con.close()
 
 
+def cmd_reconcile(args, paths: Paths) -> int:
+    """Replay recorded batches through the frozen adapters (read-only)."""
+    import sqlite3
+    if not paths.database.exists():
+        raise FileNotFoundError(f"{paths.database} does not exist")
+    con = sqlite3.connect(f"file:{paths.database}?mode=ro", uri=True)
+    try:
+        if args.sport == "NHL":
+            from .reconcile import nhl as rec
+        else:
+            from .reconcile import nba as rec
+        reports = [r for b in args.batch for r in (lambda x: x if isinstance(x, list) else [x])(
+            rec.reconcile_batch(con, b))] if args.batch else rec.reconcile_all(con)
+        _emit(reports)
+        bad = [r for r in reports if r.get("status", "COMPARED") != "COMPARED"
+               or any(k in (r.get("outcomes") or {}) for k in ("DIFFERS", "PROBABILITY_DIFFERS", "EV_DIFFERS",
+                                                                "NOT_REPLAYED", "SIDE_UNRESOLVED"))
+               and not (r.get("decisions_only") or {}).get("outcomes", {}).get("MATCH")]
+        return EXIT_CHECK_FAILED if bad else EXIT_OK
+    finally:
+        con.close()
+
+
 # -- parser ------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -278,6 +301,11 @@ def build_parser() -> argparse.ArgumentParser:
     nh.add_argument("--out", required=True)
     nh.add_argument("--allow-new-names", action="store_true")
     results.set_defaults(handler=cmd_results)
+
+    reconcile = commands.add_parser("reconcile", help="Replay recorded score batches through frozen adapters (read-only)")
+    reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])
+    reconcile.add_argument("--batch", action="append", help="batch_id (repeatable); default every recorded batch")
+    reconcile.set_defaults(handler=cmd_reconcile)
     return parser
 
 

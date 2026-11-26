@@ -58,7 +58,9 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
   - [x] Reconciliation: the user database's 15 NBA finals (Nov 8–9) agree with the manually transcribed R4 history; the one key mismatch is the Clippers name (below).
   - [x] First live fetch on the user PC (2026-11-25, NBA 2026-11-24): 3 events, 3 finals recorded, 0 conflicts. This applied 0006 + 0007 to the live `data/gambling.sqlite` (backup `data/archives/gambling.sqlite.pre-0006-0007.20261125.bak`). Migrations 0001–0007 are now frozen (`tests/test_migration_freeze.py`).
   - [x] 0008 `espn_result_retrievals`: a re-fetch that returns identical bytes records only the retrieval, not another full capture.
-  - [ ] Daily scheduled fetch (all sports, previous day) on the user PC.
+  - [ ] Daily scheduled fetch (all sports, previous day) on the user PC (user runs it manually for now).
+- [x] 2026-11-25: reconciliation of recorded history (`gambling/reconcile/`, `python -m gambling reconcile`, `docs/reconciliation/2026-11-25-recorded-history.md`): NHL 552/552 Day-0 rows exact; NBA 138/138 FIVE_SPORT rows exact with two documented history explanations, 60/60 R4_R3 decisions exact. Findings for ChatGPT: Nov 8 Pelicans @ Clippers renamed in the frozen NBA history after the Nov 9–11 runs; Nov 7 preview on pre-Nov 6 history.
+- [ ] NFL / NCAAFB / NCAABB reconciliation: needs the capture→board converter (NFL) and the recorded runs' daily feature inputs (NCAAFB/NCAABB).
   - [ ] Data-quality finding for ChatGPT review: the frozen NBA history uses both "Los Angeles Clippers" (through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so V27 features split the team. Not changed (frozen evidence).
 - Immutable odds snapshots; append game result events; calculate hypothetical
   market outcomes but never equate them to money won or lost.

@@ -25,6 +25,7 @@
 **Results feed (2026-11-25):** `python -m gambling results fetch --sport NBA --date D` records ESPN finals. Then `python -m gambling results nba-history --base <history.csv> --through <slate−1> --out <new.csv>` writes the base history plus the new finals to a new file, which the unchanged scorer can read with `--history`.
 - **Unknown names:** the feed stops on team names the base never used, unless `--allow-new-names` is passed.
 - **Checked against the database:** the database's 15 NBA finals for Nov 8–9 match the manual history.
+- **Reconciliation (2026-11-25):** see `docs/reconciliation/2026-11-25-recorded-history.md`. The Nov 9–11 runs had the Nov 8 Pelicans @ Clippers final under "LA Clippers"; the frozen history renamed it, so the archived Nov 12 forecast was scored on a different history than those runs.
 - **Data-quality finding (not changed):** the frozen history uses both "Los Angeles Clippers" (2018 through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so the V27 features treat them as two teams. Any change belongs to ChatGPT research and a new release; this frozen release is not altered.
 
 **Before live use:**
