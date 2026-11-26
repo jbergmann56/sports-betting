@@ -59,11 +59,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from gambling.config import PACKAGE_ROOT
+from gambling.core.bovada import quotes_from_bovada as _bovada
 from gambling.core.quotes import OPPOSITE, QuoteSide
 from gambling.models.base import (
     AK_RELEASE_METHOD, EVALUATED, LEAN, NOT_EVALUATED_BY_MODEL, PASS, QUALIFIED, UNSCORED, ScoreRow,
@@ -114,28 +114,7 @@ def _american(v: str) -> float:
 # ---------------------------------------------------------------------- quotes
 def quotes_from_bovada(raw: list, captured_utc: str, source: str = "") -> list[QuoteSide]:
     """Six QuoteSides per event from the archived Bovada coupon response (main game-line markets)."""
-    keys = {"2W-HCAP": ("Spread", {"A": "Away", "H": "Home"}), "2W-12": ("Moneyline", {"A": "Away", "H": "Home"}),
-            "2W-OU": ("Total", {"O": "Over", "U": "Under"})}
-    out = []
-    for block in raw:
-        for e in block["events"]:
-            comp = {c["id"]: c for c in e["competitors"]}
-            away = next(c["name"] for c in comp.values() if not c["home"])
-            home = next(c["name"] for c in comp.values() if c["home"])
-            start = datetime.fromtimestamp(e["startTime"] / 1000, tz=timezone.utc).isoformat()
-            for g in e["displayGroups"]:
-                for m in g["markets"]:
-                    if m["key"] not in keys or not m["period"]["main"] or m["period"]["live"]:
-                        continue
-                    market, side_of = keys[m["key"]]
-                    for o in m["outcomes"]:
-                        p = o["price"]
-                        out.append(QuoteSide(
-                            "NCAAFB", str(e["id"]), start, away, home, market, side_of[o["type"]], o["description"],
-                            _f(p.get("handicap")), _american(p["american"]), f"BOVADA:{p['id']}", captured_utc,
-                            "OFFERED_PREGAME" if o["status"] == "O" and m["status"] == "O" and not e["live"]
-                            else "NOT_OFFERED", "Bovada", source))
-    return out
+    return _bovada(raw, captured_utc, "NCAAFB", source)
 
 
 def check_against_quoted_lines(quotes: Iterable[QuoteSide], quoted_lines: Iterable[Mapping]) -> None:

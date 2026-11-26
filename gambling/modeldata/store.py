@@ -349,6 +349,8 @@ class Store:
         chain = self.chain(dataset_id)
         if not chain:
             raise ModelDataError(f"{dataset_id} has no FULL base version to append to")
+        if run_id and not self.fetchone("SELECT run_id FROM md_model_runs WHERE run_id = ?", (run_id,)):
+            raise ModelDataError(f"run {run_id!r} is not registered; register_run before appending its records")
         head, base = chain[-1], self._version_meta(chain[0])
         columns = self.columns(chain[0])
         for n, rec in enumerate(records):

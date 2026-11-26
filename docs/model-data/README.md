@@ -118,7 +118,12 @@ the database as dataset `ncaabb/master`:
 
 Verified on the real file: the rebuilt master matches the original on all 29,008 × 134 values, and re-appending the full file stores 0 records (2.6 s).
 
-**Not yet wired:** the NCAABB adapter is last in the sport order, so no daily NCAABB run calls `append_records` yet. That call becomes the final step of the NCAABB pipeline when it is built.
+**From a scoring run:** `gambling.models.ncaabb.v4_legacy.append_run_to_master(store, inputs, run_id)` turns the run's pregame scoring inputs into master rows and appends them.
+- **Key:** the ESPN `game_id`, the same key the master uses.
+- **Columns:** the 58 columns the inputs share with the master are copied verbatim. The 76 master-only columns (results, unit nets, source audit) are left empty, because the archive has no builder that derives them. `record_origin` and `notes` say so.
+- **Reruns:** the records hold no run ID, so a rerun of the same inputs appends nothing. The run is recorded as the version's `produced_by_run` and must be registered first.
+- **Verified on the real master:** 29,008 + 13 records after the Nov 1 run, and 0 added on rerun.
+- **Not yet automatic:** there is no daily NCAABB pipeline yet. The call becomes its final step.
 
 ## 7. Import pipeline
 

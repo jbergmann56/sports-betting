@@ -40,6 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/core/bovada.py` — parser for archived Bovada coupon responses (main full-game Spread/Moneyline/Total, outcome price IDs as `quote_id`, `NOT_PREGAME` when captured at or after the start); shared by NCAAFB and NCAABB.
 - `gambling/core/quotes.py` — `QuoteSide` (selection-oriented lines), long-capture reader, `complete_board` (explicit `NOT_OFFERED` sides).
 - `gambling/models/base.py` — adapter contract v2 (`SCORED`, `CONDITIONAL_SCORED`, `EVALUATED`, `NOT_EVALUATED_BY_MODEL`, `UNSCORED`, `BLOCKED`); v1 positional construction unchanged.
 - `gambling/scoring/pricing.py` — push-aware EV / Full Kelly with basis and null reasons; Adjusted Kelly pass-through only.
