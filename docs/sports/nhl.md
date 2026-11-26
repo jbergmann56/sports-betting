@@ -22,6 +22,8 @@
 - **Incomplete boards:** an event without six `OFFERED_PREGAME` sides is skipped by the original adapter. The new adapter shows it as UNSCORED rows (`INCOMPLETE_OR_NOT_PREGAME_BOARD`) instead of dropping it.
 - **Bet sheet:** `gambling.betsheets.nhl.build_capture_sheet(quotes_csv, authority)`. It gives each quoted side × the champion and challenger of its market (132 rows on Nov 12). Regression sheet: `tests/fixtures/betsheets/NHL_DAY0_20261112_betsheet.csv` (SHA-256 `b2b91b78…`).
 
+**Reconciliation (2026-11-25):** all 552 recorded Day-0 rows of the user database (Nov 7–11) reproduce exactly from the database's own quotes (`docs/reconciliation/2026-11-25-recorded-history.md`).
+
 **Known scorer artifacts (recorded, not changed):** the contracts carry a hard-coded `date` of 2026-10-27 and `source_label` "BetUS direct page", although the Nov 12 prices are Bovada. The sheet uses the quote's own time and bookmaker. The scorer label is kept in the row diagnostics.
 
 **Before any live or production use:** a decision on refreshing the controls (frozen through 2025, so 2026-27 games are scored on prior-season segments only); the missing PL V1 and V15 inputs; and ChatGPT evaluation of the Day-0 residual edge. The user's `data/gambling.sqlite` holds no NHL `model_scores` for batch `20261112T134056Z_68f7ec`, so the fixture CSV is the reference.
