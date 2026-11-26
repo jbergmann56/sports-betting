@@ -81,7 +81,20 @@ class EspnCollectorTests(unittest.TestCase):
         self.assertEqual(row["game_date"], "2026-11-01")
         self.assertTrue(row["source_file"].startswith("espn:"))
         again = espn.record(self.con, self.capture("NCAABB", "2026-11-01", NCAABB_1101, "2026-11-03T13:00:00+00:00"))
-        self.assertEqual((again["finals_recorded"], again["finals_already_recorded"]), (0, finals))
+        self.assertTrue(again["unchanged_response"])
+        self.assertEqual(again["finals_recorded"], 0)
+        self.assertEqual(self.con.execute("SELECT COUNT(*) FROM espn_result_captures").fetchone()[0], 1)
+        self.assertEqual(self.con.execute("SELECT COUNT(*) FROM espn_result_observations").fetchone()[0],
+                         counts["events"])
+        self.assertEqual(self.con.execute("SELECT retrieved_utc FROM espn_result_retrievals").fetchall()[0][0],
+                         "2026-11-03T13:00:00+00:00")
+        # a changed response for the same date is stored in full again
+        changed = json.loads(NCAABB_1101.read_bytes())
+        changed["eventsDate"] = {"note": "changed"}
+        third = espn.record(self.con, self.capture("NCAABB", "2026-11-01", json.dumps(changed).encode(),
+                                                   "2026-11-03T14:00:00+00:00"))
+        self.assertFalse(third["unchanged_response"])
+        self.assertEqual((third["finals_recorded"], third["finals_already_recorded"]), (0, finals))
         self.assertEqual(self.con.execute("SELECT COUNT(*) FROM espn_result_captures").fetchone()[0], 2)
 
     def test_changed_score_is_a_conflict_not_an_overwrite(self):

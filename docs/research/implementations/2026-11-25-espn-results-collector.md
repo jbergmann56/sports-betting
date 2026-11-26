@@ -23,6 +23,12 @@ The collector writes into the existing `official_game_results` (0001; PK `(sport
 - 0007 on a copy of the user database (after 0006): 31 existing tables hash identically; integrity and foreign-key checks are clean.
 - Reconciliation: the user database's 15 NBA finals (Nov 8–9) agree with the manually transcribed R4 history. The only key mismatch is the Clippers name.
 
+## First live run (user PC, 2026-11-25)
+
+- `results fetch --sport NBA --date 2026-11-24`: 3 events, 3 finals recorded (Pistons 104–86 Magic, Celtics 131–116 Wizards, Mavericks 120–101 Nuggets), 0 conflicts. `official_game_results` went from 124 to 127 rows, and the integrity check is clean.
+- Opening the live database applied 0006 + 0007 (verified backup first). Those migrations are now frozen: `tests/test_migration_freeze.py` pins the hashes of 0001–0007, and changes go in new migrations.
+- Follow-up from that run: re-fetching a date stored another full copy of the response. Migration **0008** (`espn_result_retrievals`) records only the retrieval when the bytes are identical to the latest capture for that sport and date; a changed response is still stored in full. 0008 was verified on a copy at the live state (all existing tables unchanged).
+
 ## Limitations
 
 - The sandbox cannot reach ESPN, so the first live fetch must run on the user PC.

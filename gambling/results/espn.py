@@ -14,6 +14,8 @@ Rules:
 * **Names are verbatim.** Team names are ESPN's ``displayName``. Nothing is renamed to match another
   source. Mismatches against a model's history (for example "LA Clippers" vs "Los Angeles Clippers")
   are reported by ``nba_history_rows``.
+* **No duplicate bodies.** A re-fetch that returns the same bytes as the latest capture for that
+  sport and date records only the retrieval time (migration 0008).
 * **Dates.** ``game_date`` is the US/Eastern calendar date of the start (the convention of the
   existing NBA history and ``official_game_results`` rows).
 
@@ -145,14 +147,29 @@ def parse(capture: Capture) -> list[Observation]:
 
 
 def record(con: sqlite3.Connection, capture: Capture) -> dict:
-    """Store a capture, its observations and any new finals. Returns counts."""
+    """Store a capture, its observations and any new finals. Returns counts.
+
+    If the response is byte-identical to the latest stored capture for the same sport and date,
+    only the retrieval is recorded (``espn_result_retrievals``, migration 0008) and
+    ``unchanged_response`` is True; nothing else is written.
+    """
     obs = parse(capture)
     counts = {"events": len(obs), "finals_observed": 0, "finals_recorded": 0, "finals_already_recorded": 0,
-              "conflicts": 0}
+              "conflicts": 0, "unchanged_response": False}
     own_tx = not con.in_transaction
     if own_tx:
         con.execute("BEGIN IMMEDIATE")
     try:
+        latest = con.execute("SELECT capture_id, body_sha256 FROM espn_result_captures WHERE sport = ? AND "
+                             "requested_date = ? ORDER BY retrieved_utc DESC LIMIT 1",
+                             (capture.sport, capture.requested_date)).fetchone()
+        if latest is not None and latest[1] == capture.body_sha256:
+            con.execute("INSERT INTO espn_result_retrievals (capture_id, url, retrieved_utc, body_sha256, collector) "
+                        "VALUES (?, ?, ?, ?, ?)", (latest[0], capture.url, capture.retrieved_utc,
+                                                   capture.body_sha256, COLLECTOR))
+            if own_tx:
+                con.execute("COMMIT")
+            return dict(counts, unchanged_response=True, events=len(obs))
         con.execute("INSERT INTO espn_result_captures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (capture.capture_id, capture.sport, capture.url, capture.requested_date, capture.retrieved_utc,
                      capture.body_sha256, len(capture.body), capture.body, COLLECTOR))
