@@ -23,7 +23,7 @@ import json
 import re
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
@@ -31,6 +31,7 @@ from zoneinfo import ZoneInfo
 
 from gambling.accounts.exports import _get, to_utc
 from gambling.accounts.importer import open_accounts_db
+from gambling.accounts.ledger import after_baseline_summary, build_tickets
 
 TOOL = "gambling.accounts.cleanse/1"
 MODEL_MARKETS = {"Moneyline", "Spread", "Total"}
@@ -109,34 +110,51 @@ def _split_matchup(matchup: Optional[str]):
     return RANK.sub("", a).strip(), RANK.sub("", h).strip()
 
 
-def _verify_placed(iss, table, ref, matched, by_id, stake_cents, placed_utc, placed_prec):
-    """DQ-05: check a placement time against the raw placement transaction (wallet delta = -stake).
+def _verify_time(iss, table, ref, field, raw_t, rec_utc, prec):
+    """DQ-05: check a recorded time against the authoritative raw transaction time.
 
-    The raw epoch timestamp is authoritative. If the recorded time equals the Chicago local time of the raw
-    placement labelled as UTC, it is corrected and logged; any other disagreement is flagged, not changed.
+    If the recorded time equals the Chicago local time of the raw transaction labelled as UTC, it is corrected
+    and logged; any other disagreement is flagged, not changed. Returns (utc, precision, basis).
     """
-    basis = "NONE" if placed_utc is None else "BASELINE_UNVERIFIED"
+    if rec_utc is None:
+        return None, "NONE", "NONE"
+    if raw_t is None:
+        return rec_utc, prec, "BASELINE_UNVERIFIED"
+    rec = datetime.fromisoformat(rec_utc)
+    diff = (rec - raw_t).total_seconds()
+    local_as_utc = raw_t.astimezone(CHICAGO).replace(tzinfo=timezone.utc)
+    if abs(diff) <= 60 or (prec == "MINUTE" and abs(diff) < 120):
+        return rec_utc, prec, "RAW_API_CONFIRMED"
+    if abs((rec - local_as_utc).total_seconds()) <= 120:
+        iss.add("DQ-05", "HIGH", table, ref, "TIMEZONE_MISLABEL_CORRECTED_FROM_RAW", field, rec_utc, raw_t.isoformat(),
+                f"recorded time equals the Chicago local time of the raw transaction labelled as UTC ({diff / 3600:+.1f} h)")
+        return raw_t.isoformat(), "SECOND", "RAW_API_CORRECTED"
+    iss.add("DQ-05", "HIGH", table, ref, f"{field.split('_')[0].upper()}_TIME_DISAGREES_WITH_RAW_KEPT", field, rec_utc,
+            raw_t.isoformat(), f"difference {diff:+.0f} s is not the Chicago offset; not changed")
+    return rec_utc, prec, "BASELINE_DISAGREES_WITH_RAW"
+
+
+def _raw_placement(matched, by_id, stake_cents):
+    """Time of the raw placement debit (wallet delta = -stake)."""
     stake_dollars = -Decimal(stake_cents) / 100
-    placements = sorted(to_utc(by_id[t].get("timestamp")) for t in matched
-                        if _get(by_id[t], "aggregate.wallet.delta.total") is not None
-                        and Decimal(str(_get(by_id[t], "aggregate.wallet.delta.total"))) == stake_dollars
-                        and by_id[t].get("timestamp") is not None)
-    if placements and placed_utc:
-        raw_t, rec = placements[0], datetime.fromisoformat(placed_utc)
-        diff = (rec - raw_t).total_seconds()
-        local_as_utc = raw_t.astimezone(CHICAGO).replace(tzinfo=timezone.utc)
-        if abs(diff) <= 60 or (placed_prec == "MINUTE" and abs(diff) < 120):
-            basis = "RAW_API_CONFIRMED"
-        elif abs((rec - local_as_utc).total_seconds()) <= 60:
-            iss.add("DQ-05", "HIGH", table, ref, "TIMEZONE_MISLABEL_CORRECTED_FROM_RAW", "placed_utc", placed_utc,
-                    raw_t.isoformat(), f"recorded time equals the Chicago local time of the raw placement labelled as "
-                                       f"UTC ({diff / 3600:+.1f} h)")
-            placed_utc, placed_prec, basis = raw_t.isoformat(), "SECOND", "RAW_API_CORRECTED"
-        else:
-            basis = "BASELINE_DISAGREES_WITH_RAW"
-            iss.add("DQ-05", "HIGH", table, ref, "PLACED_TIME_DISAGREES_WITH_RAW_KEPT", "placed_utc", placed_utc,
-                    raw_t.isoformat(), f"difference {diff:+.0f} s is not the Chicago offset; not changed")
-    return placed_utc, placed_prec, basis
+    ts = sorted(to_utc(by_id[t].get("timestamp")) for t in matched
+                if _get(by_id[t], "aggregate.wallet.delta.total") is not None
+                and Decimal(str(_get(by_id[t], "aggregate.wallet.delta.total"))) == stake_dollars
+                and by_id[t].get("timestamp") is not None)
+    return ts[0] if ts else None
+
+
+def _raw_settlement(matched, by_id):
+    """Time of the final raw settlement or void (sportsbook ST/VD)."""
+    ts = sorted(to_utc(by_id[t].get("timestamp")) for t in matched
+                if (_get(by_id[t], "aggregate.wallet.category") or "")[-3:] in ("-ST", "-VD")
+                and by_id[t].get("timestamp") is not None)
+    return ts[-1] if ts else None
+
+
+def _verify_placed(iss, table, ref, matched, by_id, stake_cents, placed_utc, placed_prec):
+    return _verify_time(iss, table, ref, "placed_utc", _raw_placement(matched, by_id, stake_cents), placed_utc,
+                        placed_prec)
 
 
 def _meta(con) -> dict:
@@ -161,6 +179,7 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
     by_id = {it["__id"]: it for it in raw}
 
     wagers, adjustments, exclusions = {}, [], []
+    derived_refs = {}
     used_raw: set = set()
     for r in rows:
         ref = r["wager_id"]
@@ -178,8 +197,17 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
         bref = r["bovada_reference"]
         matched = sorted(index.get(bref, set()) | index.get(str(r["source_transaction_id"] or "\0"), set())) if bref or r["source_transaction_id"] else []
         placed_utc, placed_prec = _ts(r["placed_timestamp_source"])
+        if matched and not bref:
+            refs = {str(x) for t in matched for x in (_get(by_id[t], "aggregate.wallet.references") or [])}
+            if len(refs) == 1:
+                bref_derived = refs.pop()
+                matched = sorted(set(matched) | index.get(bref_derived, set()))
+                iss.add("DQ-04", "MEDIUM", "sportsbook_wagers", ref, "REFERENCE_DERIVED_FROM_RAW_TRANSACTION",
+                        "bovada_reference", None, bref_derived,
+                        f"baseline source_transaction_id {r['source_transaction_id']} is a raw transaction of that bet")
+                derived_refs[ref] = bref_derived
         if matched:
-            method, key = "REFERENCE", bref or f"BTX-{matched[0]}"
+            method, key = "REFERENCE", bref or derived_refs.get(ref) or f"BTX-{matched[0]}"
         elif bref:
             method, key = "REFERENCE_NOT_IN_RAW", bref
             iss.add("DQ-04", "LOW", "sportsbook_wagers", ref, "KEY_FROM_BASELINE_REFERENCE", "bovada_reference", bref,
@@ -251,6 +279,8 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
             dq = "FIXED" if odds is not None else "FLAGGED"
         # DQ-05 timestamps
         settled_utc, settled_prec = _ts(r["settled_timestamp_source"])
+        settled_utc, settled_prec, s_basis = _verify_time(iss, "sportsbook_wagers", ref, "settled_utc",
+                                                          _raw_settlement(matched, by_id), settled_utc, settled_prec)
         for fld, rawv, prec in (("placed", r["placed_timestamp_source"], placed_prec),
                                 ("settled", r["settled_timestamp_source"], settled_prec)):
             if rawv and str(rawv).endswith(".999Z"):
@@ -289,7 +319,7 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
             odds_american=odds, odds_status=odds_status, stake_cents=r["stake_cents"],
             net_pnl_cents=r["net_pnl_cents"], result_raw=r["result"], result=result,
             placed_raw=r["placed_timestamp_source"], placed_utc=placed_utc, placed_precision=placed_prec,
-            placed_time_basis=basis,
+            placed_time_basis=basis, settled_time_basis=s_basis,
             settled_raw=r["settled_timestamp_source"], settled_utc=settled_utc, settled_precision=settled_prec,
             original_frozen_tier=r["original_frozen_tier"], prebet_evidence_category=r["prebet_evidence_category"],
             retrospective_champion_tier=r["champion_tier_current"],
@@ -405,8 +435,17 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
     iss.add("DQ-11", "INFO", "sportsbook_wagers", None, "COLUMNS_SEPARATED", "champion_tier_current", None,
             "retrospective_champion_tier", "authorization evidence = original_frozen_tier + prebet_evidence_category")
 
+    # DQ-13 raw ticket ledger, cross-checked against the baseline
+    b_settled = {(r["bovada_reference"] or derived_refs.get(r["wager_id"])): r for r in rows
+                 if (r["bovada_reference"] or derived_refs.get(r["wager_id"])) and not r["result"].startswith("Settled")}
+    b_open = {o["bovada_reference"]: o for o in opens if o["bovada_reference"]}
+    through = meta.get("data_through_date")
+    tickets, t_gates, compared = build_tickets(raw, b_settled, b_open,
+                                               date.fromisoformat(through) if through else None, iss)
     gates = _gates(meta, rows, wagers, adjustments, exclusions, ledger, opens, links, collisions)
-    return dict(wagers=wagers, adjustments=adjustments, exclusions=exclusions, ledger=ledger, opens=opens,
+    gates.update({k: {"actual": a, "expected": e, "pass": a == e} for k, (a, e) in t_gates.items()})
+    gates["_raw_vs_baseline_compared"] = compared
+    return dict(tickets=tickets, wagers=wagers, adjustments=adjustments, exclusions=exclusions, ledger=ledger, opens=opens,
                 links=links, issues=iss.rows, gates=gates, raw_transactions=len(raw))
 
 
@@ -452,7 +491,7 @@ def _gates(meta, rows, wagers, adjustments, exclusions, ledger, opens, links, co
 def fingerprint(result: dict) -> str:
     payload = {k: (sorted(v.values(), key=lambda x: json.dumps(x, sort_keys=True, default=str))
                    if isinstance(v, dict) else v) for k, v in result.items()
-               if k in ("wagers", "adjustments", "exclusions", "ledger", "opens", "links")}
+               if k in ("wagers", "adjustments", "exclusions", "ledger", "opens", "links", "tickets")}
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -468,6 +507,7 @@ def run_cleanse(db: Path, scoring_db: Optional[Path] = None) -> dict:
         summary = {"fingerprint": fp, "wagers": len(res["wagers"]), "open_wagers": len(res["opens"]),
                    "adjustments": len(res["adjustments"]), "exclusions": len(res["exclusions"]),
                    "non_sports": len(res["ledger"]), "links": len(res["links"]),
+                   "raw_tickets": len(res["tickets"]), "after_baseline": after_baseline_summary(res["tickets"]),
                    "issues_by_rule": dict(sorted(Counter(i["rule_id"] for i in res["issues"]).items())),
                    "issues_by_severity": dict(Counter(i["severity"] for i in res["issues"]))}
         con.execute("BEGIN IMMEDIATE")
@@ -483,7 +523,8 @@ def run_cleanse(db: Path, scoring_db: Optional[Path] = None) -> dict:
             for table, items in (("c_wagers", res["wagers"].values()), ("c_open_wagers", res["opens"]),
                                  ("c_accounting_adjustments", res["adjustments"]),
                                  ("c_accounting_exclusions", res["exclusions"]),
-                                 ("c_non_sports_ledger", res["ledger"].values()), ("c_wager_links", res["links"].values())):
+                                 ("c_non_sports_ledger", res["ledger"].values()), ("c_wager_links", res["links"].values()),
+                                 ("c_raw_tickets", res["tickets"].values())):
                 for it in items:
                     cols = ["run_id", *it]
                     con.execute(f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",

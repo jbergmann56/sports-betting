@@ -95,8 +95,23 @@ Input is the raw layer only: `pnl_baseline_*` and `latest_transactions`, which a
 
 Hard gates: stake, itemized, prior, sportsbook account, casino, poker, bonus and all-gambling P&L equal the baseline metadata to the cent; 683 settled rows conserved; ticket arithmetic (LOSS = −stake, PUSH/VOID = 0, WIN = payout ±1 cent); unique keys; no key collisions; cash movements recognize 0; open tickets not also settled; every link resolves.
 
+### DQ-13 raw ticket ledger (`gambling/accounts/ledger.py`, migration `0003_raw_tickets`)
+
+Runs inside `accounts cleanse`. One `c_raw_tickets` row per Bovada bet reference, from the raw sportsbook transactions only:
+- **Lifecycle:** PL (placed, debit of the risk) → ST (settled, credit of the payout; 0 for a loss) → US (unsettled, followed by a new ST) / VD (void, refund). Net P&L = sum of the wallet deltas across fund types (bonus funds included, as in the baseline). Result from the payout: 0 → LOSS, = risk → PUSH, > risk → WIN, in between → OTHER (flagged).
+- **Coverage:** a ticket whose placement is before the covered raw time is `PLACEMENT_NOT_COVERED`; its P&L is settlement − risk field (`net_pnl_basis`), never zero.
+- **Scope:** sport from the event path, market mapped (Asian handicap/puck line → Spread, Over/Under → Total, Head To Head → Moneyline). Parlays, live bets and other markets are `OUT_OF_MODEL_SCOPE`.
+- **Baseline cross-check (gates):** every ticket in both the baseline and the raw exports must agree on net P&L and stake to the cent.
+- **After the baseline:** view `tickets_after_baseline` = tickets not in the baseline, plus baseline-open tickets that have settled since. Non-sports activity (casino, poker, bonuses, cash) after the baseline is **not** in this ledger yet.
+- **DQ-04/05 additions:** a baseline row whose `source_transaction_id` is a raw transaction gets the bet reference from it. Settlement times are verified against the final raw ST/VD like placement times.
+
 ### Verification on the real baseline (2026-11-26, raw exports synthetic)
 - PASSED. Stake 2,174,294; itemized −265,277; prior −13,012; sportsbook account −278,289; casino −50,968; poker −8,486; bonus 250,013; all-gambling −87,730 (cents).
 - 660 tickets + 23 aggregate adjustments = 683. All 23 odds-missing wins back-solved exactly; 37 odds stay UNRECOVERABLE (36 losses, 1 push). 382 directions derived; 3 unresolved (1 parlay, 1 prop, 1 spread).
-- **Finding:** for 166 evidence links (all "New" cohort), `scored_utc + scored_seconds_before_bet` lands exactly **+6.00 h** after the baseline `placed_at_utc`. Either those placement times are Chicago local time labelled as UTC, or the gap field is off by the offset. The raw placement debits decide it on the real import (DQ-05). Until then those links are dropped as `DROPPED_PLACED_BEFORE_QUOTE_TIME_UNVERIFIED` (238 dropped in total, 54 of them for unknown wagers).
+- **Finding (resolved 2026-11-26):** for 166 evidence links (all "New" cohort), `scored_utc + scored_seconds_before_bet` lands exactly **+6.00 h** after the baseline `placed_at_utc`. Either those placement times are Chicago local time labelled as UTC, or the gap field is off by the offset. Resolved: the raw transactions show the baseline's "New"-cohort placement **and settlement** times are Chicago local time labelled UTC (180/180 placements, 181 settlements). DQ-05 corrects them from raw. Until then those links are dropped as `DROPPED_PLACED_BEFORE_QUOTE_TIME_UNVERIFIED` (238 dropped in total, 54 of them for unknown wagers).
 - DQ-10 against the live scoring DB: 60 score ids only in the export, 289 only in the database. Export-only scores are not imported.
+
+### Raw ledger check (2026-11-26, real baseline + Nov 2–24 exports)
+- PASSED. 184 tickets in both the baseline and the raw exports: net P&L and stake agree to the cent for all 184.
+- 414 baseline times corrected from raw (230 placements, 184 settlements); evidence links kept: 199.
+- Not yet in the baseline, sportsbook only: 297 new tickets (stake $2,355.29, net −$153.60) and 50 baseline-open tickets since settled (stake $731.64, net −$458.78). Four of the new tickets were placed on the evening of Nov 10 Chicago time, after the baseline's last recorded ticket.

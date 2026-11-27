@@ -219,6 +219,9 @@ def cmd_accounts(args, paths: Paths) -> int:
         print(f"  wagers {r['wagers']}  open {r['open_wagers']}  adjustments {r['adjustments']}  exclusions "
               f"{r['exclusions']}  non-sports {r['non_sports']}  links {r['links']}")
         print(f"  issues by rule: {r['issues_by_rule']}")
+        print(f"  raw tickets {r['raw_tickets']}; not yet in the baseline (settled):")
+        for k, v in sorted(r["after_baseline"].items()):
+            print(f"    {k}: {v['tickets']} tickets, stake {v['stake_cents'] / 100:,.2f}, net {v['net_pnl_cents'] / 100:+,.2f}")
         for k, v in r["gates"].items():
             if not k.startswith("_"):
                 print(f"  [{'PASS' if v['pass'] else 'FAIL'}] {k}: {v['actual']} (expected {v['expected']})")

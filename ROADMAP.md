@@ -70,7 +70,11 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 - [x] Raw import into the separate `data/accounts/accounts.sqlite` (`python -m gambling accounts import`): files, pages, every transaction version and sighting, coverage windows, verbatim P&L baseline; gated, atomic, idempotent, append-only. Verified on synthetic exports and the real baseline (16 tables identical).
 - [x] DQ-01…DQ-12 cleanse (`python -m gambling accounts cleanse`, accounts migration `0002_cleanse`): rule log in `dq_issues`, canonical rows only when all hard gates pass, append-only, deterministic. Gates pass to the cent on the real baseline.
   - [ ] Data-quality finding for review: 166 "New"-cohort evidence links imply placements exactly +6 h after the baseline UTC time; the real raw import decides whether the baseline times are Chicago local time labelled UTC.
-- [ ] Run import + cleanse on the user PC against the real exports.
+- [x] Run import + cleanse on the user PC against the real exports (2026-11-26: DQ run 1 PASSED, 15/15 gates, 199 links).
+  - [x] +6 h finding resolved: "New"-cohort baseline placement and settlement times are Chicago local time labelled UTC (raw transactions); DQ-05 corrects placement and settlement times from raw.
+- [x] DQ-13 raw ticket ledger (`gambling/accounts/ledger.py`, accounts migration `0003_raw_tickets`): one row per bet reference from raw PL/ST/US/VD transactions; gates require raw = baseline P&L and stake to the cent (184/184 on the real data); `tickets_after_baseline` view.
+- [ ] Re-run `accounts cleanse` on the user PC (applies 0003; run 2).
+- [ ] Non-sports activity after the baseline (casino, poker, bonuses, cash): recognition rules to agree before it is ledgered.
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model
