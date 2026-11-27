@@ -146,3 +146,33 @@ class NbaPipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecordRunTests(unittest.TestCase):
+    def test_record_is_verified_idempotent_and_append_only(self):
+        from gambling.pipeline.record import RecordError, record_run
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            m = run_nba_daily("2026-11-12", r4.CAPTURE_20261112, root, None, scorer=lambda q, h: archived_forecasts(),
+                              authority=registry_authority(), now=NOW)
+            con = connect(root / "g.sqlite")
+            con.row_factory = None
+            self.addCleanup(con.close)
+            apply_migrations(con)
+            r = record_run(con, Path(m["run_dir"]))
+            self.assertEqual((r["recorded"], r["rows"]), (True, 48))
+            self.assertFalse(record_run(con, Path(m["run_dir"]))["recorded"])
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM latest_pipeline_sheets WHERE status = "
+                                         "'PRODUCTION_QUALIFIED'").fetchone(), (2,))
+            m2 = run_nba_daily("2026-11-12", r4.CAPTURE_20261112, root, None, scorer=lambda q, h: archived_forecasts(),
+                               authority=registry_authority(), now=datetime(2026, 11, 12, 19, tzinfo=timezone.utc))
+            record_run(con, Path(m2["run_dir"]))
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM pipeline_runs").fetchone(), (2,))
+            self.assertEqual(con.execute("SELECT DISTINCT run_key FROM latest_pipeline_sheets").fetchall(),
+                             [(f"NBA:2026-11-12:{m2['run_id']}",)])
+            for sql in ("UPDATE pipeline_sheet_rows SET status = 'X'", "DELETE FROM pipeline_runs"):
+                with self.assertRaises(sqlite3.DatabaseError):
+                    con.execute(sql)
+            (Path(m2["run_dir"]) / "betsheet.csv").write_text("tampered", encoding="utf-8")
+            with self.assertRaises(RecordError):
+                record_run(con, Path(m2["run_dir"]))

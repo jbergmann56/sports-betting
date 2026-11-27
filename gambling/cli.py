@@ -276,7 +276,29 @@ def cmd_daily(args, paths: Paths) -> int:
     print(f"  history through {h['last_date']} (+{h['espn_rows_added']} ESPN finals)")
     print(f"  {m['outputs']['rows']} rows: {m['outputs']['sheet_status']}")
     print(f"  written to {m['run_dir']}")
+    if args.no_record or db is None:
+        print("  not recorded in the database" + (" (--no-record)" if args.no_record else " (no gambling.sqlite)"))
+        return 0
+    return _record_run(paths, Path(m["run_dir"]))
+
+
+def _record_run(paths: Paths, run_dir: Path) -> int:
+    from . import db as dbm
+    from .pipeline.record import RecordError, record_run
+    con = dbm.open_database(paths)
+    try:
+        r = record_run(con, run_dir)
+    except RecordError as exc:
+        print(f"NOT RECORDED: {exc}")
+        return 1
+    finally:
+        con.close()
+    print(f"  recorded {r['run_key']}: {r['rows']} sheet rows" if r["recorded"] else f"  {r['run_key']} already recorded")
     return 0
+
+
+def cmd_daily_record(args, paths: Paths) -> int:
+    return _record_run(paths, Path(args.run_dir))
 
 
 def cmd_reconcile(args, paths: Paths) -> int:
@@ -392,7 +414,11 @@ def build_parser() -> argparse.ArgumentParser:
     daily.add_argument("--date", required=True, help="slate date (Central), YYYY-MM-DD")
     daily.add_argument("--capture", help="capture quotes.csv or run folder (default: newest capture with NBA)")
     daily.add_argument("--allow-new-names", action="store_true", help="accept ESPN team names the history never used")
+    daily.add_argument("--no-record", action="store_true", help="write the run folder only, not gambling.sqlite")
     daily.set_defaults(handler=cmd_daily)
+    dr = commands.add_parser("daily-record", help="Record an existing daily run folder in gambling.sqlite")
+    dr.add_argument("run_dir")
+    dr.set_defaults(handler=cmd_daily_record)
 
     reconcile = commands.add_parser("reconcile", help="Replay recorded score batches through frozen adapters (read-only)")
     reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])
