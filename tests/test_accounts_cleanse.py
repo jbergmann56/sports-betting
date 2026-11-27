@@ -187,6 +187,18 @@ class CleanseTests(unittest.TestCase):
         self.assertEqual(r["gates"]["settled_ticket_rows_conserved"]["actual"], len(WAGERS))
         self.assertEqual(r["wagers"], len(WAGERS) - 1)
 
+    def test_cli_cleanse_runs_without_export_dir(self):
+        # `accounts cleanse` has no --export-dir; it must not look up the export folder.
+        import io
+        from contextlib import redirect_stdout
+        from gambling.cli import main
+        from gambling.config import Paths
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = main(["accounts", "cleanse", "--db", str(self.db)], Paths(Path(self.tmp.name) / "data"))
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("PASSED", out.getvalue())
+
     def test_dq01_aggregate_rows_are_adjustments_not_tickets(self):
         run_cleanse(self.db)
         self.assertNotIn("W5", self.wagers())

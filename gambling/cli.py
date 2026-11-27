@@ -209,10 +209,7 @@ def cmd_accounts(args, paths: Paths) -> int:
     from .accounts import exports
     from .config import PACKAGE_ROOT
 
-    folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
-    if not folder.is_dir():
-        raise FileNotFoundError(f"{folder} not found")
-    if args.accounts_command == "cleanse":
+    if args.accounts_command == "cleanse":  # works on the accounts DB only; takes no --export-dir
         from .accounts.cleanse import run_cleanse
         db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
         scores = Path(args.scoring_db) if args.scoring_db else None
@@ -228,6 +225,9 @@ def cmd_accounts(args, paths: Paths) -> int:
         if failed:
             print("No canonical rows written; see dq_issues for this run.")
         return 0 if not failed else 1
+    folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
+    if not folder.is_dir():
+        raise FileNotFoundError(f"{folder} not found")
     if args.accounts_command == "import":
         from .accounts.importer import ImportRefused, import_exports
         db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
