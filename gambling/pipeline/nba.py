@@ -19,54 +19,27 @@ new folder ``<data>/daily/NBA/<date>/<run_id>/``; nothing is overwritten.
 from __future__ import annotations
 
 import csv
-import hashlib
 import json
 import sqlite3
-import subprocess
-from collections import Counter
 from datetime import date as Date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Optional
-from zoneinfo import ZoneInfo
 
-from gambling.betsheets.export import write_csv, write_excel
-from gambling.config import PACKAGE_ROOT
 from gambling.core.quotes import complete_board, from_capture_csv
 from gambling.models.nba import r4_legacy as r4
 from gambling.results.espn import nba_history_rows, write_nba_history
+from gambling.pipeline.common import CENTRAL, VALIDATION_STATUS, PipelineError, finish, git_commit, new_run_dir, sha
+from gambling.pipeline.common import latest_capture as _latest_capture
 from gambling.scoring.sheet import Authority, assemble, mark_new_vs_previous
 
 PIPELINE_ID = "gambling.pipeline.nba/1"
-VALIDATION_STATUS = "UNVALIDATED_GENERALIZED_WRAPPER"
 BASE_HISTORY = r4.FIXTURE / "inputs" / "nba_history_through_2026-11-11.csv"
-CENTRAL = ZoneInfo("America/Chicago")
 STALE_DAYS = 7  # the frozen scorer's own limit
-
-
-class PipelineError(RuntimeError):
-    pass
-
-
-def _sha(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
-def _git_commit() -> Optional[str]:
-    try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=PACKAGE_ROOT, capture_output=True, text=True,
-                             timeout=10)
-        return out.stdout.strip() or None
-    except (OSError, subprocess.SubprocessError):
-        return None
+_sha = sha
 
 
 def latest_capture(captures: Path, sport: str = "NBA") -> Path:
-    """Newest capture run folder with a quotes.csv containing ``sport`` rows."""
-    for run in sorted((p for p in Path(captures).iterdir() if (p / "quotes.csv").is_file()), reverse=True):
-        with open(run / "quotes.csv", newline="", encoding="utf-8") as f:
-            if any(r["sport"] == sport for r in csv.DictReader(f)):
-                return run / "quotes.csv"
-    raise PipelineError(f"no capture with {sport} quotes under {captures}")
+    return _latest_capture(captures, sport)
 
 
 def slate_quotes(quotes_csv: Path, slate: str) -> list:
@@ -86,11 +59,8 @@ def run_nba_daily(slate: str, quotes_csv: Path, out_root: Path, scoring_db: Opti
     quotes_csv, base_history = Path(quotes_csv), Path(base_history)
     if base_history.resolve() == BASE_HISTORY.resolve() and _sha(base_history) != r4.HISTORY_SHA:
         raise PipelineError("frozen base history hash mismatch")
-    run_id = started.strftime("%Y%m%dT%H%M%SZ")
-    run_dir = Path(out_root) / "daily" / "NBA" / slate / run_id
-    run_dir.mkdir(parents=True, exist_ok=False)
+    run_id, run_dir = new_run_dir(out_root, "NBA", slate, started)
     inputs = run_dir / "inputs"
-    inputs.mkdir()
 
     # 1) quotes
     quotes_json = r4.quotes_json_from_capture(quotes_csv, slate)
@@ -134,13 +104,10 @@ def run_nba_daily(slate: str, quotes_csv: Path, out_root: Path, scoring_db: Opti
     if authority is None and scoring_db:
         authority = Authority.from_sqlite(str(scoring_db))
     rows = mark_new_vs_previous(assemble(quotes, scores, authority, releases=list(r4.RELEASES)), None)
-    sheet_sha = write_csv(rows, run_dir / "betsheet.csv")
-    finished = datetime.now(timezone.utc) if now is None else now
     as_of = sorted({q.quote_as_of_utc for q in quotes if q.quote_as_of_utc})
     manifest = {
         "pipeline": PIPELINE_ID, "validation_status": VALIDATION_STATUS, "sport": "NBA", "slate_date": slate,
-        "run_id": run_id, "started_utc": started.isoformat(), "finished_utc": finished.isoformat(),
-        "code_commit": _git_commit(),
+        "run_id": run_id, "started_utc": started.isoformat(), "code_commit": git_commit(),
         "releases": {"champion": r4.CHAMPION, "challenger": r4.CHALLENGER, "scorer_label": r4.SCORER_LABEL,
                      "scorer_verifies": "legacy_models/nba_r4/RELEASE_HASHES.json"},
         "authority_source": str(scoring_db) if authority is not None and scoring_db else
@@ -154,17 +121,7 @@ def run_nba_daily(slate: str, quotes_csv: Path, out_root: Path, scoring_db: Opti
                         "espn_rows_added": len(new["rows"]), "last_date": last, "days_before_slate": stale,
                         "duplicates_skipped": len(new["duplicates"]), "new_team_names": sorted(new["unknown_teams"])},
         },
-        "outputs": {"forecasts_sha256": _sha(run_dir / "forecasts.csv"), "betsheet_csv_sha256": sheet_sha,
-                    "rows": len(rows), "sheet_status": dict(sorted(Counter(r["status"] for r in rows).items())),
+        "outputs": {"forecasts_sha256": _sha(run_dir / "forecasts.csv"),
                     "games_quoted": len({q.event_id for q in quotes}), "games_scored": slate_games},
     }
-    try:
-        write_excel(rows, run_dir / "betsheet.xlsx", provenance={k: json.dumps(v) if isinstance(v, dict) else v
-                                                                  for k, v in manifest.items() if k != "outputs"})
-        manifest["outputs"]["betsheet_xlsx_sha256"] = _sha(run_dir / "betsheet.xlsx")
-    except RuntimeError as exc:  # openpyxl missing: the CSV is the record
-        manifest["outputs"]["betsheet_xlsx_sha256"] = None
-        manifest["outputs"]["betsheet_xlsx_note"] = str(exc)
-    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    manifest["run_dir"] = str(run_dir)
-    return manifest
+    return finish(run_dir, rows, manifest, now)

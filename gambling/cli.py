@@ -260,20 +260,26 @@ def cmd_accounts(args, paths: Paths) -> int:
 
 
 def cmd_daily(args, paths: Paths) -> int:
-    from .pipeline.nba import PipelineError, latest_capture, run_nba_daily
-    capture = Path(args.capture) if args.capture else latest_capture(paths.captures, "NBA")
-    if capture.is_dir():
-        capture = capture / "quotes.csv"
-    db = paths.database if paths.database.exists() else None
+    from .pipeline.common import PipelineError, latest_capture
     try:
-        m = run_nba_daily(args.date, capture, paths.data_dir, db, allow_new_names=args.allow_new_names)
+        capture = Path(args.capture) if args.capture else latest_capture(paths.captures, args.sport)
+        if capture.is_dir():
+            capture = capture / "quotes.csv"
+        db = paths.database if paths.database.exists() else None
+        if args.sport == "NBA":
+            from .pipeline.nba import run_nba_daily
+            m = run_nba_daily(args.date, capture, paths.data_dir, db, allow_new_names=args.allow_new_names)
+        else:
+            from .pipeline.nhl import run_nhl_daily
+            m = run_nhl_daily(args.date, capture, paths.data_dir, db)
     except PipelineError as exc:
         print(f"BLOCKED: {exc}")
         return 1
-    print(f"NBA {m['slate_date']} run {m['run_id']} ({m['validation_status']})")
+    print(f"{args.sport} {m['slate_date']} run {m['run_id']} ({m['validation_status']})")
     print(f"  capture {capture} (quotes as of {m['inputs']['capture_quotes_csv']['quote_as_of_utc_max']})")
-    h = m["inputs"]["history"]
-    print(f"  history through {h['last_date']} (+{h['espn_rows_added']} ESPN finals)")
+    h = m["inputs"].get("history")
+    if h:
+        print(f"  history through {h['last_date']} (+{h['espn_rows_added']} ESPN finals)")
     print(f"  {m['outputs']['rows']} rows: {m['outputs']['sheet_status']}")
     print(f"  written to {m['run_dir']}")
     if args.no_record or db is None:
@@ -409,11 +415,11 @@ def build_parser() -> argparse.ArgumentParser:
     nh.add_argument("--allow-new-names", action="store_true")
     results.set_defaults(handler=cmd_results)
 
-    daily = commands.add_parser("daily", help="Daily pipeline: capture -> frozen scorer -> bet sheet (NBA)")
-    daily.add_argument("sport", choices=["NBA"])
+    daily = commands.add_parser("daily", help="Daily pipeline: capture -> frozen scorer -> bet sheet (NBA, NHL)")
+    daily.add_argument("sport", choices=["NBA", "NHL"])
     daily.add_argument("--date", required=True, help="slate date (Central), YYYY-MM-DD")
     daily.add_argument("--capture", help="capture quotes.csv or run folder (default: newest capture with NBA)")
-    daily.add_argument("--allow-new-names", action="store_true", help="accept ESPN team names the history never used")
+    daily.add_argument("--allow-new-names", action="store_true", help="NBA: accept ESPN team names the history never used")
     daily.add_argument("--no-record", action="store_true", help="write the run folder only, not gambling.sqlite")
     daily.set_defaults(handler=cmd_daily)
     dr = commands.add_parser("daily-record", help="Record an existing daily run folder in gambling.sqlite")
