@@ -40,6 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/accounts/nonsports.py` — DQ-14 raw non-sports ledger; treatment per raw category learned from the baseline and verified to the cent (migration `0004_raw_non_sports`).
 - `gambling/accounts/ledger.py` — DQ-13 raw ticket ledger (one row per bet reference from raw sportsbook transactions), cross-checked to the cent against the P&L baseline (migration `0003_raw_tickets`).
 - `gambling/accounts/cleanse.py` — DQ-01…DQ-12 cleanse inside the accounts database: rule log, hard gates to the cent, canonical tables written only on PASS (migration `0002_cleanse`).
 - `gambling/accounts/importer.py` — raw import into the separate accounts database (own migrations in `gambling/accounts/migrations/`): verbatim files/pages, every transaction version and sighting, coverage windows, verbatim P&L baseline. Refuses `gambling.sqlite`.

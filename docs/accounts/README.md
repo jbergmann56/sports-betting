@@ -105,6 +105,15 @@ Runs inside `accounts cleanse`. One `c_raw_tickets` row per Bovada bet reference
 - **After the baseline:** view `tickets_after_baseline` = tickets not in the baseline, plus baseline-open tickets that have settled since. Non-sports activity (casino, poker, bonuses, cash) after the baseline is **not** in this ledger yet.
 - **DQ-04/05 additions:** a baseline row whose `source_transaction_id` is a raw transaction gets the bet reference from it. Settlement times are verified against the final raw ST/VD like placement times.
 
+### DQ-14 raw non-sports ledger (`gambling/accounts/nonsports.py`, migration `0004_raw_non_sports`)
+
+Runs inside `accounts cleanse`. One `c_raw_non_sports` row per raw non-sportsbook transaction.
+- **Rules learned from the baseline:** baseline rows that carry the raw transaction id are the evidence. For each raw category (and zero / non-zero wallet delta) the baseline's category and treatment are learned: RECOGNIZED (P&L = delta), NON_PNL (cash movement, P&L 0) or ZERO.
+- **Gates:** no category may have two treatments in the baseline, and the rules must reproduce every matched baseline row to the cent.
+- **After the baseline** (raw time later than the last matched row): rows get the learned rule. A category without baseline evidence gets a family analogy (casino/poker recognized, deposits/withdrawals non-P&L; flagged `ANALOGY`) or stays `UNCLASSIFIED` with NULL P&L. Bonus/points categories are never guessed.
+- **Poker:** a buy-in whose tournament has no cash-out in the covered raw data is an `OPEN_POKER_STAKE` (P&L 0 until it closes), following the baseline's deferral.
+- View `non_sports_after_baseline`.
+
 ### Verification on the real baseline (2026-11-26, raw exports synthetic)
 - PASSED. Stake 2,174,294; itemized −265,277; prior −13,012; sportsbook account −278,289; casino −50,968; poker −8,486; bonus 250,013; all-gambling −87,730 (cents).
 - 660 tickets + 23 aggregate adjustments = 683. All 23 odds-missing wins back-solved exactly; 37 odds stay UNRECOVERABLE (36 losses, 1 push). 382 directions derived; 3 unresolved (1 parlay, 1 prop, 1 spread).
@@ -115,3 +124,7 @@ Runs inside `accounts cleanse`. One `c_raw_tickets` row per Bovada bet reference
 - PASSED. 184 tickets in both the baseline and the raw exports: net P&L and stake agree to the cent for all 184.
 - 414 baseline times corrected from raw (230 placements, 184 settlements); evidence links kept: 199.
 - Not yet in the baseline, sportsbook only: 297 new tickets (stake $2,355.29, net −$153.60) and 50 baseline-open tickets since settled (stake $731.64, net −$458.78). Four of the new tickets were placed on the evening of Nov 10 Chicago time, after the baseline's last recorded ticket.
+
+### Non-sports check (2026-11-26, real baseline + Nov 2–24 exports)
+- PASSED: 17 rules learned from 68 matched baseline rows, no conflicts, all 68 reproduced.
+- After the baseline, recognized P&L: bonuses and rewards +$196.88, casino −$18.00, poker −$10.38. Deposits/withdrawals: +$132.37 wallet, $0 P&L. One BN-FT row (−$3.22) is UNCLASSIFIED: in the baseline that category only appears with a zero delta. Sit & go poker (PK-*-MSG) and a Bitcoin deposit are by analogy.

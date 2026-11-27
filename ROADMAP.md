@@ -73,8 +73,10 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 - [x] Run import + cleanse on the user PC against the real exports (2026-11-26: DQ run 1 PASSED, 15/15 gates, 199 links).
   - [x] +6 h finding resolved: "New"-cohort baseline placement and settlement times are Chicago local time labelled UTC (raw transactions); DQ-05 corrects placement and settlement times from raw.
 - [x] DQ-13 raw ticket ledger (`gambling/accounts/ledger.py`, accounts migration `0003_raw_tickets`): one row per bet reference from raw PL/ST/US/VD transactions; gates require raw = baseline P&L and stake to the cent (184/184 on the real data); `tickets_after_baseline` view.
-- [ ] Re-run `accounts cleanse` on the user PC (applies 0003; run 2).
-- [ ] Non-sports activity after the baseline (casino, poker, bonuses, cash): recognition rules to agree before it is ledgered.
+- [x] Re-run `accounts cleanse` on the user PC (applied 0003; run 2 PASSED, 18/18 gates, 924 raw tickets).
+- [x] DQ-14 raw non-sports ledger (`gambling/accounts/nonsports.py`, accounts migration `0004_raw_non_sports`): treatment per raw category learned from baseline rows with raw ids; gates require no conflicts and every matched row reproduced to the cent; analogy/unclassified flagged, never zero.
+- [ ] User sign-off on the learned non-sports rules (PC run evidence) before post-baseline totals become account P&L; decide BN-FT non-zero rows (bonus forfeits).
+- [ ] Re-run `accounts cleanse` on the user PC (applies 0003 + 0004).
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model

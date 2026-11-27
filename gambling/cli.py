@@ -222,6 +222,12 @@ def cmd_accounts(args, paths: Paths) -> int:
         print(f"  raw tickets {r['raw_tickets']}; not yet in the baseline (settled):")
         for k, v in sorted(r["after_baseline"].items()):
             print(f"    {k}: {v['tickets']} tickets, stake {v['stake_cents'] / 100:,.2f}, net {v['net_pnl_cents'] / 100:+,.2f}")
+        ns = r["non_sports_raw"]
+        print(f"  raw non-sports {r['raw_non_sports']} ({ns['matched_baseline_rows']} matched to baseline rows); "
+              "after the baseline:")
+        for k, v in ns["after_baseline"].items():
+            rec = "not classified" if v["recognized_pnl_cents"] is None else f"{v['recognized_pnl_cents'] / 100:+,.2f}"
+            print(f"    {k}: {v['rows']} rows, wallet {v['delta_cents'] / 100:+,.2f}, recognized P&L {rec}")
         for k, v in r["gates"].items():
             if not k.startswith("_"):
                 print(f"  [{'PASS' if v['pass'] else 'FAIL'}] {k}: {v['actual']} (expected {v['expected']})")

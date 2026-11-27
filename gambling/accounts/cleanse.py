@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 from gambling.accounts.exports import _get, to_utc
 from gambling.accounts.importer import open_accounts_db
 from gambling.accounts.ledger import after_baseline_summary, build_tickets
+from gambling.accounts.nonsports import build_non_sports
 
 TOOL = "gambling.accounts.cleanse/1"
 MODEL_MARKETS = {"Moneyline", "Spread", "Total"}
@@ -445,7 +446,11 @@ def build(con: sqlite3.Connection, scoring_db: Optional[Path] = None) -> dict:
     gates = _gates(meta, rows, wagers, adjustments, exclusions, ledger, opens, links, collisions)
     gates.update({k: {"actual": a, "expected": e, "pass": a == e} for k, (a, e) in t_gates.items()})
     gates["_raw_vs_baseline_compared"] = compared
-    return dict(tickets=tickets, wagers=wagers, adjustments=adjustments, exclusions=exclusions, ledger=ledger, opens=opens,
+    # DQ-14 raw non-sports ledger, treatment learned from the baseline
+    ns_rows = [dict(zip(ns_cols, n)) for n in con.execute("SELECT * FROM pnl_baseline_non_sports_transactions")]
+    raw_ns, ns_gates, ns_summary = build_non_sports(raw, ns_rows, iss)
+    gates.update({k: {"actual": a, "expected": e, "pass": a == e} for k, (a, e) in ns_gates.items()})
+    return dict(raw_ns=raw_ns, ns_summary=ns_summary, tickets=tickets, wagers=wagers, adjustments=adjustments, exclusions=exclusions, ledger=ledger, opens=opens,
                 links=links, issues=iss.rows, gates=gates, raw_transactions=len(raw))
 
 
@@ -491,7 +496,7 @@ def _gates(meta, rows, wagers, adjustments, exclusions, ledger, opens, links, co
 def fingerprint(result: dict) -> str:
     payload = {k: (sorted(v.values(), key=lambda x: json.dumps(x, sort_keys=True, default=str))
                    if isinstance(v, dict) else v) for k, v in result.items()
-               if k in ("wagers", "adjustments", "exclusions", "ledger", "opens", "links", "tickets")}
+               if k in ("wagers", "adjustments", "exclusions", "ledger", "opens", "links", "tickets", "raw_ns")}
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -508,6 +513,7 @@ def run_cleanse(db: Path, scoring_db: Optional[Path] = None) -> dict:
                    "adjustments": len(res["adjustments"]), "exclusions": len(res["exclusions"]),
                    "non_sports": len(res["ledger"]), "links": len(res["links"]),
                    "raw_tickets": len(res["tickets"]), "after_baseline": after_baseline_summary(res["tickets"]),
+                   "raw_non_sports": len(res["raw_ns"]), "non_sports_raw": res["ns_summary"],
                    "issues_by_rule": dict(sorted(Counter(i["rule_id"] for i in res["issues"]).items())),
                    "issues_by_severity": dict(Counter(i["severity"] for i in res["issues"]))}
         con.execute("BEGIN IMMEDIATE")
@@ -524,7 +530,8 @@ def run_cleanse(db: Path, scoring_db: Optional[Path] = None) -> dict:
                                  ("c_accounting_adjustments", res["adjustments"]),
                                  ("c_accounting_exclusions", res["exclusions"]),
                                  ("c_non_sports_ledger", res["ledger"].values()), ("c_wager_links", res["links"].values()),
-                                 ("c_raw_tickets", res["tickets"].values())):
+                                 ("c_raw_tickets", res["tickets"].values()),
+                                 ("c_raw_non_sports", res["raw_ns"].values())):
                 for it in items:
                     cols = ["run_id", *it]
                     con.execute(f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
