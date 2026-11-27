@@ -91,6 +91,7 @@ repairs and without a chat history dependency.
 - [x] Scaffold sport model and bet-sheet packages and CI documentation gates.
 - [x] Run offline tests and frozen-history audit in GitHub Actions (run 45529455524): documentation gate, unit tests, and frozen-history audit passed. Five-sport *live-model parity* remains a separate, outstanding certification.
 - [ ] Merge validated `reorg/v1` to `main` only after checks.
+- [x] 2026-11-26: Odds API key quarantined (`docs/security/odds-api-key-quarantine.md`): literal removed from the tracked legacy script, which now refuses to run; CI secret scan (`tests/test_no_secrets.py`). User to regenerate the key; Git history not rewritten.
 - [x] Create six workstream branches provisionally at reorg/v1 head; synchronize them with validated main after integration.
 - [ ] Verify separate offline/local backup before untracking any cleanup candidate.
 - [ ] Inventory and integrate post-November-11 model and bet-sheet changes from their actual source.
