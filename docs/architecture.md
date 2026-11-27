@@ -40,6 +40,11 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
+- `gambling/accounts/nonsports.py` — DQ-14 raw non-sports ledger; treatment per raw category learned from the baseline and verified to the cent (migration `0004_raw_non_sports`). Zero-P&L label disagreements in the baseline are logged, not gate failures.
+- `gambling/accounts/ledger.py` — DQ-13 raw ticket ledger (one row per bet reference from raw sportsbook transactions), cross-checked to the cent against the P&L baseline (migration `0003_raw_tickets`).
+- `gambling/accounts/cleanse.py` — DQ-01…DQ-12 cleanse inside the accounts database: rule log, hard gates to the cent, canonical tables written only on PASS (migration `0002_cleanse`).
+- `gambling/accounts/importer.py` — raw import into the separate accounts database (own migrations in `gambling/accounts/migrations/`): verbatim files/pages, every transaction version and sighting, coverage windows, verbatim P&L baseline. Refuses `gambling.sqlite`.
+- `gambling/accounts/exports.py` — read-only pre-import profile of the Bovada exporter output (`*_pages.jsonl` as source; coverage, gaps, duplicates, balance chain, baseline reconciliation). Account data goes to a separate database, never `gambling.sqlite`.
 - `gambling/reconcile/` — read-only replay of recorded `model_scores` batches through the frozen adapters with inputs rebuilt from the database (NHL, NBA); named history variants document explained differences.
 - `gambling/results/espn.py` — ESPN scoreboard collector (migration 0007): raw captures, per-event observations, first final recorded in `official_game_results` and never overwritten (later differences go to `espn_result_conflicts`); identical re-fetches recorded as retrievals only (0008); NBA history feed for the R4 scorer. The network fetch runs on the user machine.
 - `gambling/core/bovada.py` — parser for archived Bovada coupon responses (main full-game Spread/Moneyline/Total, outcome price IDs as `quote_id`, `NOT_PREGAME` when captured at or after the start); shared by NCAAFB and NCAABB.

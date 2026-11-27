@@ -194,6 +194,71 @@ def cmd_results(args, paths: Paths) -> int:
         con.close()
 
 
+def _print_text(text: str) -> None:
+    """Print text, substituting characters the console cannot encode (e.g. '→' on a Windows cp1252 console).
+    Report files are always written as UTF-8; this only affects what the terminal shows."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(enc, errors="replace").decode(enc))
+
+
+def cmd_accounts(args, paths: Paths) -> int:
+    """Bovada account exports: read-only profile, or import into the SEPARATE accounts database."""
+    from .accounts import exports
+    from .config import PACKAGE_ROOT
+
+    if args.accounts_command == "cleanse":  # works on the accounts DB only; takes no --export-dir
+        from .accounts.cleanse import run_cleanse
+        db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
+        scores = Path(args.scoring_db) if args.scoring_db else None
+        r = run_cleanse(db, scoring_db=scores)
+        failed = [k for k, v in r["gates"].items() if not k.startswith("_") and not v["pass"]]
+        print(f"DQ run {r['run_id']}: {r['status']}  fingerprint {r['fingerprint'][:16]}")
+        print(f"  wagers {r['wagers']}  open {r['open_wagers']}  adjustments {r['adjustments']}  exclusions "
+              f"{r['exclusions']}  non-sports {r['non_sports']}  links {r['links']}")
+        print(f"  issues by rule: {r['issues_by_rule']}")
+        print(f"  raw tickets {r['raw_tickets']}; not yet in the baseline (settled):")
+        for k, v in sorted(r["after_baseline"].items()):
+            print(f"    {k}: {v['tickets']} tickets, stake {v['stake_cents'] / 100:,.2f}, net {v['net_pnl_cents'] / 100:+,.2f}")
+        ns = r["non_sports_raw"]
+        print(f"  raw non-sports {r['raw_non_sports']} ({ns['matched_baseline_rows']} matched to baseline rows); "
+              "after the baseline:")
+        for k, v in ns["after_baseline"].items():
+            rec = "not classified" if v["recognized_pnl_cents"] is None else f"{v['recognized_pnl_cents'] / 100:+,.2f}"
+            print(f"    {k}: {v['rows']} rows, wallet {v['delta_cents'] / 100:+,.2f}, recognized P&L {rec}")
+        for k, v in r["gates"].items():
+            if not k.startswith("_"):
+                print(f"  [{'PASS' if v['pass'] else 'FAIL'}] {k}: {v['actual']} (expected {v['expected']})")
+        if failed:
+            print("No canonical rows written; see dq_issues for this run.")
+        return 0 if not failed else 1
+    folder = Path(args.export_dir or PACKAGE_ROOT / "bovada_transactions" / "bovada_export")
+    if not folder.is_dir():
+        raise FileNotFoundError(f"{folder} not found")
+    if args.accounts_command == "import":
+        from .accounts.importer import ImportRefused, import_exports
+        db = Path(args.db) if args.db else paths.data_dir / "accounts" / "accounts.sqlite"
+        try:
+            result = import_exports(db, folder, Path(args.baseline) if args.baseline else None,
+                                    scoring_db=paths.database, since=args.since)
+        except ImportRefused as exc:
+            _emit({"status": "REFUSED", "reason": str(exc)})
+            return EXIT_CHECK_FAILED
+        _emit({"status": "IMPORTED", "database": str(db), **result})
+        return EXIT_OK
+    report = exports.profile_exports(folder, Path(args.baseline) if args.baseline else None, args.since)
+    out = Path(args.out) if args.out else paths.data_dir / "accounts" / "reports"
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = report["generated_utc"][:19].replace(":", "").replace("-", "")
+    (out / f"export_profile_{stamp}.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    (out / f"export_profile_{stamp}.md").write_text(exports.markdown(report), encoding="utf-8")
+    _print_text(exports.markdown(report))
+    _print_text(f"Written: {out / f'export_profile_{stamp}.md'} (+ .json)")
+    return EXIT_OK if report["import_ready"] else EXIT_CHECK_FAILED
+
+
 def cmd_reconcile(args, paths: Paths) -> int:
     """Replay recorded batches through the frozen adapters (read-only)."""
     import sqlite3
@@ -306,6 +371,23 @@ def build_parser() -> argparse.ArgumentParser:
     reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])
     reconcile.add_argument("--batch", action="append", help="batch_id (repeatable); default every recorded batch")
     reconcile.set_defaults(handler=cmd_reconcile)
+
+    accounts = commands.add_parser("accounts", help="Bovada account exports (read-only profile; import comes after review)")
+    a_commands = accounts.add_subparsers(dest="accounts_command", required=True)
+    prof = a_commands.add_parser("profile", help="Coverage, counts, missing periods, duplicates, balance chain")
+    prof.add_argument("--export-dir", help="default bovada_transactions/bovada_export")
+    prof.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite to reconcile wagers against")
+    prof.add_argument("--since", help="assess coverage from this date (e.g. 2026-09-02); earlier gaps reported")
+    prof.add_argument("--out", help="report folder (default <data>/accounts/reports, outside Git)")
+    imp = a_commands.add_parser("import", help="Import raw exports (+ P&L baseline) into data/accounts/accounts.sqlite")
+    imp.add_argument("--export-dir", help="default bovada_transactions/bovada_export")
+    imp.add_argument("--baseline", help="P&L baseline gambling_pnl_*.sqlite (copied verbatim)")
+    imp.add_argument("--since", help="coverage assessment start, as for profile")
+    imp.add_argument("--db", help="accounts database (default <data>/accounts/accounts.sqlite; never gambling.sqlite)")
+    cl = a_commands.add_parser("cleanse", help="DQ-01..DQ-12 cleanse of the accounts DB raw layer (gated, append-only)")
+    cl.add_argument("--db", help="accounts database (default <data>/accounts/accounts.sqlite)")
+    cl.add_argument("--scoring-db", help="optional gambling.sqlite to reconcile score ids (DQ-10), opened read-only")
+    accounts.set_defaults(handler=cmd_accounts)
     return parser
 
 

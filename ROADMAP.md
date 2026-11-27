@@ -64,6 +64,20 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
   - [ ] Data-quality finding for ChatGPT review: the frozen NBA history uses both "Los Angeles Clippers" (through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so V27 features split the team. Not changed (frozen evidence).
 - Immutable odds snapshots; append game result events; calculate hypothetical
   market outcomes but never equate them to money won or lost.
+- [x] 2026-11-25: pre-import profile of the Bovada exports (`python -m gambling accounts profile`, `docs/accounts/README.md`): coverage from complete runs only, NOT_COVERED gaps (never zero), counts, duplicates and changed versions, balance chain, P&L baseline reconciliation. Read-only.
+- [x] Profile run on the user PC (2026-11-26): 2,233 transactions, Sep 20 – Nov 24 covered without gaps; one shared balance chain holds; 574/683 baseline wagers matched, none missing in covered time; Sep 2–20 NOT_COVERED (31-day API limit). Zero-page failed runs reported as failed attempts (701984a).
+- [x] Cross-platform test fixes: NHL adapter tests and regression sheet compare with the golden 1e-9 tolerance (Day-0 math differs in the last digit between Linux and Windows C libraries); Excel test closes its workbook; CI runs on every PR, including stacked ones.
+- [x] Raw import into the separate `data/accounts/accounts.sqlite` (`python -m gambling accounts import`): files, pages, every transaction version and sighting, coverage windows, verbatim P&L baseline; gated, atomic, idempotent, append-only. Verified on synthetic exports and the real baseline (16 tables identical).
+- [x] DQ-01…DQ-12 cleanse (`python -m gambling accounts cleanse`, accounts migration `0002_cleanse`): rule log in `dq_issues`, canonical rows only when all hard gates pass, append-only, deterministic. Gates pass to the cent on the real baseline.
+  - [ ] Data-quality finding for review: 166 "New"-cohort evidence links imply placements exactly +6 h after the baseline UTC time; the real raw import decides whether the baseline times are Chicago local time labelled UTC.
+- [x] Run import + cleanse on the user PC against the real exports (2026-11-26: DQ run 1 PASSED, 15/15 gates, 199 links).
+  - [x] +6 h finding resolved: "New"-cohort baseline placement and settlement times are Chicago local time labelled UTC (raw transactions); DQ-05 corrects placement and settlement times from raw.
+- [x] DQ-13 raw ticket ledger (`gambling/accounts/ledger.py`, accounts migration `0003_raw_tickets`): one row per bet reference from raw PL/ST/US/VD transactions; gates require raw = baseline P&L and stake to the cent (184/184 on the real data); `tickets_after_baseline` view.
+- [x] Re-run `accounts cleanse` on the user PC (applied 0003; run 2 PASSED, 18/18 gates, 924 raw tickets).
+- [x] DQ-14 raw non-sports ledger (`gambling/accounts/nonsports.py`, accounts migration `0004_raw_non_sports`): treatment per raw category learned from baseline rows with raw ids; gates require no conflicts and every matched row reproduced to the cent; analogy/unclassified flagged, never zero.
+- [ ] User sign-off on the learned non-sports rules (PC run evidence) before post-baseline totals become account P&L; decide BN-FT non-zero rows (bonus forfeits).
+- [x] PC run 3 (2026-11-27) FAILED the two DQ-14 gates: 5 categories with zero-P&L label changes in the baseline (46 rows). Fixed: label-only disagreements on zero-P&L rows are logged, not gate failures; money disagreements still fail.
+- [ ] Re-run `accounts cleanse` on the user PC (run 4).
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model

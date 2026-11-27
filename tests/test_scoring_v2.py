@@ -215,9 +215,12 @@ class ExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             write_excel(rows, Path(d) / "s.xlsx", {"fixture": "unit"})
             wb = load_workbook(Path(d) / "s.xlsx")
-            self.assertEqual(wb.sheetnames, ["All rows", "Champion vs Challenger", "Positive EV view",
-                                             "Provenance & Legend"])
-            self.assertEqual(wb["All rows"].max_row, 7)
+            try:
+                self.assertEqual(wb.sheetnames, ["All rows", "Champion vs Challenger", "Positive EV view",
+                                                 "Provenance & Legend"])
+                self.assertEqual(wb["All rows"].max_row, 7)
+            finally:
+                wb.close()  # Windows cannot delete the temp folder while the workbook is open
 
 
 if __name__ == "__main__":
