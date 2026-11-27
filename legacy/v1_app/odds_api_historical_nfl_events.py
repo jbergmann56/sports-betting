@@ -3,10 +3,18 @@ import json
 import csv
 from datetime import datetime
 
-API_KEY = 'a1dc025ce8e418a2041856e4abb7510d'
+# QUARANTINED 2026-11-26: the Odds API key that was hard-coded here is public in Git history and must be
+# regenerated before any use. The Odds API is not used until the user decides it is needed
+# (docs/security/odds-api-key-quarantine.md). This archived v1 script refuses to run.
+API_KEY = None
+
+
+def _quarantined():
+    raise SystemExit("Odds API access is quarantined (docs/security/odds-api-key-quarantine.md)")
 BASE_URL = 'https://api.the-odds-api.com/v4/historical/sports'
 
 def fetch_historical_events(sport, date):
+    _quarantined()
     url = f"{BASE_URL}/{sport}/events"
     params = {
         'apiKey': API_KEY,

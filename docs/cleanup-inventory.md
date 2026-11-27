@@ -13,6 +13,12 @@ The reorganization may identify low-value historical files. A Git-ignored direct
 
 **Must remain tracked:** `legacy_models/` published artifacts and hashes, `legacy_ops/` audit scripts, `legacy/v1_app/` historic code, `data/GAMBLING_ROLLING_AUTHORITATIVE_QUOTES_AND_SCORES.zip`, tests/fixtures, numbered SQLite migrations and release registry. These are evidence, even if not needed at runtime.
 
+## Redactions of tracked evidence
+
+| Date | Path | Change | Original | Authority |
+|---|---|---|---|---|
+| 2026-11-26 | `legacy/v1_app/odds_api_historical_nfl_events.py` | Hard-coded Odds API key replaced with `None`; script exits if run. Still tracked; no other line changed. | Unchanged in Git history at `0cc1195` / `39a8f89` | User instruction "quarantine the odds api key" (`docs/security/odds-api-key-quarantine.md`) |
+
 ## Safe local archival procedure
 
 1. Make an independent snapshot of repository and non-Git data; verify checksums/restoration.
