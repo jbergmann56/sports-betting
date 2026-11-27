@@ -259,6 +259,26 @@ def cmd_accounts(args, paths: Paths) -> int:
     return EXIT_OK if report["import_ready"] else EXIT_CHECK_FAILED
 
 
+def cmd_daily(args, paths: Paths) -> int:
+    from .pipeline.nba import PipelineError, latest_capture, run_nba_daily
+    capture = Path(args.capture) if args.capture else latest_capture(paths.captures, "NBA")
+    if capture.is_dir():
+        capture = capture / "quotes.csv"
+    db = paths.database if paths.database.exists() else None
+    try:
+        m = run_nba_daily(args.date, capture, paths.data_dir, db, allow_new_names=args.allow_new_names)
+    except PipelineError as exc:
+        print(f"BLOCKED: {exc}")
+        return 1
+    print(f"NBA {m['slate_date']} run {m['run_id']} ({m['validation_status']})")
+    print(f"  capture {capture} (quotes as of {m['inputs']['capture_quotes_csv']['quote_as_of_utc_max']})")
+    h = m["inputs"]["history"]
+    print(f"  history through {h['last_date']} (+{h['espn_rows_added']} ESPN finals)")
+    print(f"  {m['outputs']['rows']} rows: {m['outputs']['sheet_status']}")
+    print(f"  written to {m['run_dir']}")
+    return 0
+
+
 def cmd_reconcile(args, paths: Paths) -> int:
     """Replay recorded batches through the frozen adapters (read-only)."""
     import sqlite3
@@ -366,6 +386,13 @@ def build_parser() -> argparse.ArgumentParser:
     nh.add_argument("--out", required=True)
     nh.add_argument("--allow-new-names", action="store_true")
     results.set_defaults(handler=cmd_results)
+
+    daily = commands.add_parser("daily", help="Daily pipeline: capture -> frozen scorer -> bet sheet (NBA)")
+    daily.add_argument("sport", choices=["NBA"])
+    daily.add_argument("--date", required=True, help="slate date (Central), YYYY-MM-DD")
+    daily.add_argument("--capture", help="capture quotes.csv or run folder (default: newest capture with NBA)")
+    daily.add_argument("--allow-new-names", action="store_true", help="accept ESPN team names the history never used")
+    daily.set_defaults(handler=cmd_daily)
 
     reconcile = commands.add_parser("reconcile", help="Replay recorded score batches through frozen adapters (read-only)")
     reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])

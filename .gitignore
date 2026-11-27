@@ -40,6 +40,7 @@ data/captures/
 data/archives/
 data/features/
 data/results/
+data/daily/
 
 # ---- ACCOUNT DATA: never commit ---------------------------------------------
 # Bovada account exports, saved account pages, P&L baselines, and the logged-in

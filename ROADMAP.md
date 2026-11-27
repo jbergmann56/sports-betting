@@ -159,6 +159,8 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] NBA live use: automated completed-results source (scorer rejects history >7 days stale; Nov 6–11 finals were manual), R3 artifacts or retirement decision, Oct 29 pipeline (research Q1); reconcile Nov 6–11 user-database NBA batches.
 - [ ] NCAAFB live use: weekly pregame features, posterior/quadrature refresh decision, published SRS gate source, results ingestion; reconcile Nov 6–10 `model_scores` batches in the user database against this adapter.
 - [ ] NHL live use: control-file refresh decision (frozen through 2025), V15/PL V1 inputs, ChatGPT evaluation of Day-0 edge.
+- [x] NBA daily pipeline (2026-11-27): `python -m gambling daily NBA --date D` — capture → frozen R4 scorer (history = frozen base + ESPN finals) → complete sheet + hashed manifest in a new run folder. `UNVALIDATED_GENERALIZED_WRAPPER`; golden Nov 12 reproduced through the pipeline.
+  - [ ] Record daily runs in `gambling.sqlite` (append-only), then dual-run (M3).
 - [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
