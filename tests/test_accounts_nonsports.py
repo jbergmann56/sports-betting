@@ -65,5 +65,21 @@ class NonSportsTests(unittest.TestCase):
         self.assertEqual(gates["non_sports_baseline_rows_not_reproduced"][0] > 0, True)
 
 
+    def test_zero_pnl_label_disagreement_is_not_a_conflict(self):
+        raw = RAW + [it("z2", 5.5, "PT-BN", 0), it("z3", 5.6, "PT-BN", 0)]
+        base = BASE + [brow("z2", "Bonuses and rewards", 0), brow("z3", "Bonuses and rewards", 0)]
+        iss = Issues()
+        rows, gates, _ = build_non_sports(raw, base, iss)
+        self.assertEqual(gates, {"non_sports_rule_conflicts": (0, 0), "non_sports_baseline_rows_not_reproduced": (0, 0)})
+        self.assertEqual(rows["z1"]["ledger_category"], "Internal transfer / zero-P&L")   # baseline label kept per row
+        self.assertIn("BASELINE_LABELS_DIFFER_ZERO_PNL", [i["action"] for i in iss.rows])
+
+    def test_money_disagreement_with_zero_delta_still_fails(self):
+        raw = RAW + [it("z2", 5.5, "PT-BN", 0)]
+        base = BASE + [brow("z2", "Bonuses and rewards", 100)]   # recognized P&L on a zero-delta row
+        _, gates, _ = build_non_sports(raw, base, Issues())
+        self.assertEqual(gates["non_sports_rule_conflicts"], (1, 0))
+
+
 if __name__ == "__main__":
     unittest.main()

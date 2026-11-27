@@ -55,15 +55,21 @@ def build_non_sports(raw: list[dict], baseline_rows: list[dict], iss) -> tuple[d
         d = _cents(_get(it, "aggregate.wallet.delta.total"))
         t = _treatment(d, b["recognized_pnl_cents"])
         learned[(_get(it, "aggregate.wallet.category"), d == 0)][(b["category"], t)] += 1
-    rules, conflicts = {}, 0
+    rules, conflicts, label_only = {}, 0, set()
     for key, outcomes in sorted(learned.items()):
         if len(outcomes) == 1:
             rules[key] = next(iter(outcomes))
         else:
-            # A conflict is only real if the treatments differ; the baseline's own labels vary for poker buy-ins.
-            treatments = {t for _, t in outcomes}
-            if len(treatments) == 1 and len({c for c, _ in outcomes}) == 1:
-                rules[key] = next(iter(outcomes))
+            # Label-only disagreement: every baseline row of this key has a zero wallet delta and zero P&L, so
+            # the labels cannot change any total. Use the most common label (ties: alphabetical) and log it.
+            # Any disagreement that involves money is a real conflict and fails the gate.
+            if {t for _, t in outcomes} == {"ZERO"}:
+                label = sorted(outcomes, key=lambda o: (-outcomes[o], o[0]))[0]
+                rules[key] = label
+                label_only.add(key)
+                iss.add("DQ-14", "INFO", "raw_transactions", f"{key[0]}:zero", "BASELINE_LABELS_DIFFER_ZERO_PNL",
+                        "ledger_category", json.dumps({c: n for (c, _), n in sorted(outcomes.items())}), label[0],
+                        "all rows have zero wallet delta and zero P&L; most common label used")
             else:
                 conflicts += 1
                 iss.add("DQ-14", "GATE", "raw_transactions", f"{key[0]}:{'zero' if key[1] else 'nonzero'}",
@@ -100,7 +106,8 @@ def build_non_sports(raw: list[dict], baseline_rows: list[dict], iss) -> tuple[d
         recognized = {"RECOGNIZED": d, "NON_PNL": 0, "ZERO": 0, "OPEN_POKER_STAKE": 0}.get(treat)
         if b is not None:
             period, prov = "BASELINE_MATCHED", "BASELINE_ROW"
-            if (ledger_cat, recognized) != (b["category"], b["recognized_pnl_cents"]):
+            label_differs = ledger_cat != b["category"]
+            if recognized != b["recognized_pnl_cents"] or (label_differs and (cat, d == 0) not in label_only):
                 mismatches += 1
                 iss.add("DQ-14", "GATE", "raw_transactions", tid, "RULE_DOES_NOT_REPRODUCE_BASELINE_ROW", None,
                         f"{b['category']} {b['recognized_pnl_cents']}", f"{ledger_cat} {recognized}",

@@ -76,7 +76,8 @@ For each NHL, NBA, NCAABB, NFL, and NCAAFB champion/challenger release:
 - [x] Re-run `accounts cleanse` on the user PC (applied 0003; run 2 PASSED, 18/18 gates, 924 raw tickets).
 - [x] DQ-14 raw non-sports ledger (`gambling/accounts/nonsports.py`, accounts migration `0004_raw_non_sports`): treatment per raw category learned from baseline rows with raw ids; gates require no conflicts and every matched row reproduced to the cent; analogy/unclassified flagged, never zero.
 - [ ] User sign-off on the learned non-sports rules (PC run evidence) before post-baseline totals become account P&L; decide BN-FT non-zero rows (bonus forfeits).
-- [ ] Re-run `accounts cleanse` on the user PC (applies 0003 + 0004).
+- [x] PC run 3 (2026-11-27) FAILED the two DQ-14 gates: 5 categories with zero-P&L label changes in the baseline (46 rows). Fixed: label-only disagreements on zero-P&L rows are logged, not gate failures; money disagreements still fail.
+- [ ] Re-run `accounts cleanse` on the user PC (run 4).
 - Import user-account wagers using unique transaction IDs, wager legs and
   settlements; reconcile cashback, casino/poker, and manual adjustments.
 - Produce original tier as of recommendation and tier under current model
