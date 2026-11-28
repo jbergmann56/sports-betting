@@ -141,7 +141,13 @@ class NbaPipelineTests(unittest.TestCase):
         self.assertEqual(len(got), len(want))
         for g, w in zip(got, want):   # the scorer stamps its own run time; everything else is identical
             g.pop("score_as_of_utc"), w.pop("score_as_of_utc")
-            self.assertEqual(g, w)
+            for k in w:
+                if g[k] == w[k]:
+                    continue
+                try:   # numpy/scipy other than the pinned versions differ in the last digits (2e-17 seen)
+                    self.assertLessEqual(abs(float(g[k]) - float(w[k])), 1e-9, (k, g[k], w[k]))
+                except ValueError:
+                    self.fail(f"{k}: {g[k]!r} != {w[k]!r}")
 
 
 if __name__ == "__main__":

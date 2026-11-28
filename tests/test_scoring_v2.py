@@ -212,7 +212,8 @@ class ExportTests(unittest.TestCase):
     def test_excel_workbook_sheets(self):
         from openpyxl import load_workbook
         rows = assemble(board(), [], releases=[R])
-        with tempfile.TemporaryDirectory() as d:
+        # ignore_cleanup_errors: on Windows another process (indexer/antivirus) can hold the new file briefly
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             write_excel(rows, Path(d) / "s.xlsx", {"fixture": "unit"})
             wb = load_workbook(Path(d) / "s.xlsx")
             try:

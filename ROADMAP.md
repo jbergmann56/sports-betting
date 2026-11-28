@@ -163,6 +163,7 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [x] NHL daily pipeline (2026-11-27): `python -m gambling daily NHL --date D` — slate rows of the capture → frozen Day-0 scorer on frozen controls → research-only sheet; recorded like NBA. Golden Nov 12 reproduced byte for byte.
   - [x] Record daily runs in `gambling.sqlite` (migration 0009 `pipeline_runs` / `pipeline_sheet_rows`, append-only, hash-verified).
   - [ ] Dual-run period (M3) and validation decision (M4).
+  - [x] 2026-11-27 PC run: ESPN NBA finals Nov 12–25 recorded (115 total); migrations 0008–0009 applied to the live database after backup. Windows fixes: LF-byte scorer inputs/manifest (a22faea); real-scorer test compares within 1e-9 (unpinned numpy/scipy differ by 2e-17); Excel test tolerates a transient file lock.
 - [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
