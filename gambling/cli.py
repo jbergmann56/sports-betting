@@ -259,6 +259,81 @@ def cmd_accounts(args, paths: Paths) -> int:
     return EXIT_OK if report["import_ready"] else EXIT_CHECK_FAILED
 
 
+def cmd_daily(args, paths: Paths) -> int:
+    from .pipeline.common import PipelineError, latest_capture
+    try:
+        capture = Path(args.capture) if args.capture else latest_capture(paths.captures, args.sport)
+        if capture.is_dir():
+            capture = capture / "quotes.csv"
+        db = paths.database if paths.database.exists() else None
+        if args.sport == "NBA":
+            from .pipeline.nba import run_nba_daily
+            m = run_nba_daily(args.date, capture, paths.data_dir, db, allow_new_names=args.allow_new_names)
+        elif args.sport == "NHL":
+            from .pipeline.nhl import run_nhl_daily
+            m = run_nhl_daily(args.date, capture, paths.data_dir, db)
+        else:
+            from .pipeline.nfl import run_nfl_daily
+            games = Path(args.schedule) if args.schedule else paths.data_dir / "nfl" / "nflverse_games.csv"
+            m = run_nfl_daily(args.date, capture, paths.data_dir, db, games)
+    except PipelineError as exc:
+        print(f"BLOCKED: {exc}")
+        return 1
+    print(f"{args.sport} {m['slate_date']} run {m['run_id']} ({m['validation_status']})")
+    print(f"  capture {capture} (quotes as of {m['inputs']['capture_quotes_csv']['quote_as_of_utc_max']})")
+    h = m["inputs"].get("history")
+    if h:
+        print(f"  history through {h['last_date']} (+{h['espn_rows_added']} ESPN finals)")
+    print(f"  {m['outputs']['rows']} rows: {m['outputs']['sheet_status']}")
+    print(f"  written to {m['run_dir']}")
+    if args.no_record or db is None:
+        print("  not recorded in the database" + (" (--no-record)" if args.no_record else " (no gambling.sqlite)"))
+        return 0
+    return _record_run(paths, Path(m["run_dir"]))
+
+
+def _record_run(paths: Paths, run_dir: Path) -> int:
+    from . import db as dbm
+    from .pipeline.record import RecordError, record_run
+    con = dbm.open_database(paths)
+    try:
+        r = record_run(con, run_dir)
+    except RecordError as exc:
+        print(f"NOT RECORDED: {exc}")
+        return 1
+    finally:
+        con.close()
+    print(f"  recorded {r['run_key']}: {r['rows']} sheet rows" if r["recorded"] else f"  {r['run_key']} already recorded")
+    return 0
+
+
+def cmd_nfl_schedule(args, paths: Paths) -> int:
+    """Download the nflverse games.csv (schedule + results) the NFL pipeline uses."""
+    import hashlib
+    import urllib.request
+    from datetime import datetime, timezone
+    from .models.nfl.live import NFLVERSE_GAMES_URL, read_games
+    dest = paths.data_dir / "nfl" / "nflverse_games.csv"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(NFLVERSE_GAMES_URL, timeout=60) as resp:  # noqa: S310 - fixed https host
+        body = resp.read()
+    tmp = dest.with_suffix(".download")
+    tmp.write_bytes(body)
+    read_games(tmp)  # refuse anything that is not an nflverse games.csv
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    archive = dest.parent / "archive" / f"nflverse_games_{stamp}.csv"
+    archive.parent.mkdir(exist_ok=True)
+    archive.write_bytes(body)
+    tmp.replace(dest)
+    print(f"nflverse games.csv: {len(body):,} bytes, sha256 {hashlib.sha256(body).hexdigest()[:16]}; "
+          f"current copy {dest}, archived {archive.name}")
+    return 0
+
+
+def cmd_daily_record(args, paths: Paths) -> int:
+    return _record_run(paths, Path(args.run_dir))
+
+
 def cmd_reconcile(args, paths: Paths) -> int:
     """Replay recorded batches through the frozen adapters (read-only)."""
     import sqlite3
@@ -366,6 +441,20 @@ def build_parser() -> argparse.ArgumentParser:
     nh.add_argument("--out", required=True)
     nh.add_argument("--allow-new-names", action="store_true")
     results.set_defaults(handler=cmd_results)
+
+    daily = commands.add_parser("daily", help="Daily pipeline: capture -> frozen scorer -> bet sheet (NBA, NHL, NFL)")
+    daily.add_argument("sport", choices=["NBA", "NHL", "NFL"])
+    daily.add_argument("--schedule", help="NFL: nflverse games.csv (default <data>/nfl/nflverse_games.csv)")
+    daily.add_argument("--date", required=True, help="slate date (Central), YYYY-MM-DD")
+    daily.add_argument("--capture", help="capture quotes.csv or run folder (default: newest capture with NBA)")
+    daily.add_argument("--allow-new-names", action="store_true", help="NBA: accept ESPN team names the history never used")
+    daily.add_argument("--no-record", action="store_true", help="write the run folder only, not gambling.sqlite")
+    daily.set_defaults(handler=cmd_daily)
+    ns = commands.add_parser("nfl-schedule", help="Download the nflverse games.csv used by `daily NFL`")
+    ns.set_defaults(handler=cmd_nfl_schedule)
+    dr = commands.add_parser("daily-record", help="Record an existing daily run folder in gambling.sqlite")
+    dr.add_argument("run_dir")
+    dr.set_defaults(handler=cmd_daily_record)
 
     reconcile = commands.add_parser("reconcile", help="Replay recorded score batches through frozen adapters (read-only)")
     reconcile.add_argument("--sport", required=True, choices=["NHL", "NBA"])

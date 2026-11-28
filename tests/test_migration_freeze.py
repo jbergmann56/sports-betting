@@ -10,6 +10,7 @@ from pathlib import Path
 
 from gambling.db.migrate import apply_migrations, connect
 
+# 0008 (espn_retrievals) and 0009 (pipeline_runs) are not applied to the live database yet.
 APPLIED_TO_LIVE_DATABASE = {
     1: ("baseline", "76eeb319e910e7061b7ede0923b8a6b58ed691bd9922c5816b7dcd0e290eb239"),
     2: ("rolling_capture", "de99e0a442814bc264971c013a4edace2091ba423ea3310cb8fdbb59503c42d6"),

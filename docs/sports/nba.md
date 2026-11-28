@@ -28,6 +28,15 @@
 - **Reconciliation (2026-11-25):** see `docs/reconciliation/2026-11-25-recorded-history.md`. The Nov 9–11 runs had the Nov 8 Pelicans @ Clippers final under "LA Clippers"; the frozen history renamed it, so the archived Nov 12 forecast was scored on a different history than those runs.
 - **Data-quality finding (not changed):** the frozen history uses both "Los Angeles Clippers" (2018 through 2026-11-08) and "LA Clippers" (2026-10-28 onward, 6 rows), so the V27 features treat them as two teams. Any change belongs to ChatGPT research and a new release; this frozen release is not altered.
 
+**Daily pipeline (2026-11-27, `UNVALIDATED_GENERALIZED_WRAPPER`):** `python -m gambling daily NBA --date D [--capture <quotes.csv or run folder>]` (`gambling/pipeline/nba.py`).
+- **Quotes:** newest capture with NBA quotes unless `--capture` is given. Only games starting on D (Central) are on the sheet; the scorer gets complete six-side pregame boards (archived builder rules).
+- **History:** the frozen base (through 2026-11-11, hash-checked) + recorded ESPN finals through D−1, written to a new file in the run folder. Stops on team names the base never used (unless `--allow-new-names`) and on history more than 7 days before D. Fetch the finals first: `python -m gambling results fetch --sport NBA --date 2026-11-12 --through <D−1>`.
+- **Scoring and sheet:** the unchanged frozen scorer; authority from the release registry in `gambling.sqlite` (read-only). Without the database the sheet cannot show production statuses.
+- **Output:** a new folder `data/daily/NBA/<D>/<run_id>/` with `inputs/` (scorer quote JSON, history), `forecasts.csv`, `betsheet.csv`, `betsheet.xlsx` and `manifest.json` (hashes of every input/output, quote times, code commit, releases, status counts). Nothing is written to `gambling.sqlite`.
+- **Validation:** through the pipeline, the Nov 12 capture reproduces the frozen regression sheet byte for byte with the archived forecasts, and identically except the scorer's own `score_as_of_utc` when the frozen scorer is re-executed (`tests/test_pipeline_nba.py`).
+- **Database (migration 0009):** after the files are written, the run is recorded in `gambling.sqlite`: `pipeline_runs` (manifest, hashes) and `pipeline_sheet_rows` (every sheet row: key columns + full row JSON). Append-only; hashes re-checked before writing; recording twice is a no-op. Views `latest_pipeline_runs` / `latest_pipeline_sheets` show the newest run per sport and date. `--no-record` skips it; `python -m gambling daily-record <run folder>` records an earlier run. These rows are not written into the legacy `model_scores` table.
+- **Not yet:** a dual-run period against independent output and validation of features beyond Nov 11. The R3 challenger stays BLOCKED.
+
 **Before live use:**
 - An automated completed-results feed. (Done: ESPN collector, above; first live fetch pending on the user PC.) The scorer rejects history more than 7 days stale, and the Nov 6–11 finals were transcribed manually (PR #4 decision 5).
 - A decision to either recover the R3 artifacts or retire R3.

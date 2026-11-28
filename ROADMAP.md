@@ -159,7 +159,12 @@ See `docs/research/implementations/2026-11-24-model-transfer-readiness.md` and t
 - [ ] NBA live use: automated completed-results source (scorer rejects history >7 days stale; Nov 6–11 finals were manual), R3 artifacts or retirement decision, Oct 29 pipeline (research Q1); reconcile Nov 6–11 user-database NBA batches.
 - [ ] NCAAFB live use: weekly pregame features, posterior/quadrature refresh decision, published SRS gate source, results ingestion; reconcile Nov 6–10 `model_scores` batches in the user database against this adapter.
 - [ ] NHL live use: control-file refresh decision (frozen through 2025), V15/PL V1 inputs, ChatGPT evaluation of Day-0 edge.
-- [ ] NFL live pipeline: current schedule/results source and capture-to-board converter.
+- [x] NBA daily pipeline (2026-11-27): `python -m gambling daily NBA --date D` — capture → frozen R4 scorer (history = frozen base + ESPN finals) → complete sheet + hashed manifest in a new run folder. `UNVALIDATED_GENERALIZED_WRAPPER`; golden Nov 12 reproduced through the pipeline.
+- [x] NHL daily pipeline (2026-11-27): `python -m gambling daily NHL --date D` — slate rows of the capture → frozen Day-0 scorer on frozen controls → research-only sheet; recorded like NBA. Golden Nov 12 reproduced byte for byte.
+  - [x] Record daily runs in `gambling.sqlite` (migration 0009 `pipeline_runs` / `pipeline_sheet_rows`, append-only, hash-verified).
+  - [ ] Dual-run period (M3) and validation decision (M4).
+  - [x] 2026-11-27 PC run: ESPN NBA finals Nov 12–25 recorded (115 total); migrations 0008–0009 applied to the live database after backup. Windows fixes: LF-byte scorer inputs/manifest (a22faea); real-scorer test compares within 1e-9 (unpinned numpy/scipy differ by 2e-17); Excel test tolerates a transient file lock.
+- [x] NFL live pipeline (2026-11-28): nflverse `games.csv` identified as the frozen schedule source; capture→`board.json` converter; week driver (frozen `score.py`, only Week-10 literals parameterized); `daily NFL`. Week 10 reproduced. `UNVALIDATED_GENERALIZED_WRAPPER`.
 - [ ] Still missing: NCAABB V5 freeze parameters, NBA R3, NHL ML V3/PL V1/V15, Grand Salami release evidence.
 
 No model was refit, re-tiered or promoted; no wager authorization changed.
