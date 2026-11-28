@@ -82,5 +82,5 @@ def finish(run_dir: Path, rows: list[dict], manifest: dict, now: Optional[dateti
     except RuntimeError as exc:  # openpyxl missing: the CSV is the record
         manifest["outputs"]["betsheet_xlsx_sha256"] = None
         manifest["outputs"]["betsheet_xlsx_note"] = str(exc)
-    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (run_dir / "manifest.json").write_bytes(json.dumps(manifest, indent=2).encode("utf-8"))
     return {**manifest, "run_dir": str(run_dir)}

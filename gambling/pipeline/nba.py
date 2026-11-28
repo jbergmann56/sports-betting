@@ -64,7 +64,8 @@ def run_nba_daily(slate: str, quotes_csv: Path, out_root: Path, scoring_db: Opti
 
     # 1) quotes
     quotes_json = r4.quotes_json_from_capture(quotes_csv, slate)
-    (inputs / f"{slate}_nba_quotes.json").write_text(quotes_json, encoding="utf-8")
+    # bytes, not text mode: Windows would write CRLF and the file would no longer match the frozen hash
+    (inputs / f"{slate}_nba_quotes.json").write_bytes(quotes_json.encode("utf-8"))
     quotes = slate_quotes(quotes_csv, slate)
     if not quotes:
         raise PipelineError(f"capture has no NBA games starting on {slate} (Central)")
