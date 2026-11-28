@@ -40,7 +40,7 @@ Register release and artifact hashes → fix feature cutoff/snapshot → compare
 
 ## Implemented shared scoring and bet-sheet layers (2026-11-25)
 
-- `gambling/pipeline/` — daily pipelines (`nba.py`, `nhl.py`, shared `common.py`): capture → unchanged frozen scorer → complete bet sheet, with a hashed run manifest in a new run folder. Status `UNVALIDATED_GENERALIZED_WRAPPER` until dual-run and validation. `record.py` appends each run to `pipeline_runs` / `pipeline_sheet_rows` (migration 0009).
+- `gambling/pipeline/` — daily pipelines (`nba.py`, `nhl.py`, `nfl.py`, shared `common.py`): capture → unchanged frozen scorer → complete bet sheet, with a hashed run manifest in a new run folder. Status `UNVALIDATED_GENERALIZED_WRAPPER` until dual-run and validation. `record.py` appends each run to `pipeline_runs` / `pipeline_sheet_rows` (migration 0009).
 - `gambling/accounts/nonsports.py` — DQ-14 raw non-sports ledger; treatment per raw category learned from the baseline and verified to the cent (migration `0004_raw_non_sports`). Zero-P&L label disagreements in the baseline are logged, not gate failures.
 - `gambling/accounts/ledger.py` — DQ-13 raw ticket ledger (one row per bet reference from raw sportsbook transactions), cross-checked to the cent against the P&L baseline (migration `0003_raw_tickets`).
 - `gambling/accounts/cleanse.py` — DQ-01…DQ-12 cleanse inside the accounts database: rule log, hard gates to the cent, canonical tables written only on PASS (migration `0002_cleanse`).
